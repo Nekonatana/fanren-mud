@@ -1,0 +1,7 @@
+{
+  "version": "v14.20260731.pwa2",
+  "build": 15,
+  "updateTime": "2026-07-31",
+  "changelog": "地图重构：删除天南荒野、七玄门改集镇、新增长安城/太南谷、所有宗门归入城镇",
+  "minClientVersion": "v14.0"
+}
