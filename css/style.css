@@ -1,0 +1,1013 @@
+/* ===== 全局重置 ===== */
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+--bg-deep:#0a0e14;--bg-panel:#121822;--bg-card:#1a2332;--bg-hover:#243040;
+--gold:#d4a857;--gold-bright:#f0c75e;--gold-dim:#8a7038;
+--jade:#5cb88a;--jade-bright:#7dd4a0;
+--crimson:#c44d4d;--crimson-bright:#e06666;
+--blue-spirit:#5b9bd5;--purple-spirit:#9b6dd4;
+--pink:#e091b0;
+--text-main:#d8d4c8;--text-dim:#7a7568;--text-bright:#f5f0e0;
+--border-gold:rgba(212,168,87,0.25);
+--shadow-glow:0 0 20px rgba(212,168,87,0.15);
+}
+html,body{
+width:100%;height:100%;overflow:hidden;
+font-family:"Microsoft YaHei","PingFang SC","Noto Sans SC",sans-serif;
+background:var(--bg-deep);color:var(--text-main);
+user-select:none;-webkit-user-select:none;
+}
+
+/* ===== 滚动条 ===== */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg-panel)}
+::-webkit-scrollbar-thumb{background:var(--gold-dim);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--gold)}
+
+/* ===== 标题画面 ===== */
+#title-screen{
+position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+background:radial-gradient(ellipse at center,#1a1e28 0%,#080a0e 70%);
+z-index:100;overflow:hidden;
+}
+.title-bg-effect{
+position:absolute;inset:0;
+background:
+radial-gradient(circle at 20% 30%,rgba(212,168,87,0.06) 0%,transparent 40%),
+radial-gradient(circle at 80% 70%,rgba(92,184,138,0.05) 0%,transparent 40%),
+radial-gradient(circle at 50% 50%,rgba(155,109,212,0.03) 0%,transparent 50%);
+animation:bgPulse 8s ease-in-out infinite;
+}
+@keyframes bgPulse{0%,100%{opacity:0.7}50%{opacity:1}}
+.title-content{text-align:center;z-index:2;animation:fadeInUp 1.5s ease}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+.game-title{
+font-size:3.5em;font-weight:bold;letter-spacing:0.3em;
+background:linear-gradient(180deg,var(--gold-bright),var(--gold),var(--gold-dim));
+-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+text-shadow:0 0 40px rgba(212,168,87,0.3);
+margin-bottom:0.1em;
+}
+.game-subtitle{
+font-size:1.2em;letter-spacing:0.8em;color:var(--jade);opacity:0.8;
+padding-left:0.8em;
+}
+.title-divider{
+width:300px;height:1px;margin:20px auto;
+background:linear-gradient(90deg,transparent,var(--gold),transparent);
+}
+.title-quote{
+font-size:0.95em;color:var(--text-dim);line-height:2;font-style:italic;
+margin-bottom:30px;
+}
+.title-buttons{display:flex;flex-direction:column;gap:12px;align-items:center}
+.btn-title{
+padding:12px 48px;font-size:1.05em;letter-spacing:0.2em;
+background:transparent;border:1px solid var(--gold-dim);color:var(--gold-bright);
+cursor:pointer;transition:all 0.3s;border-radius:2px;
+font-family:inherit;
+}
+.btn-title:hover{
+background:rgba(212,168,87,0.1);border-color:var(--gold);
+box-shadow:0 0 20px rgba(212,168,87,0.2);transform:translateY(-1px);
+}
+.title-hint{margin-top:30px;font-size:0.75em;color:var(--text-dim);opacity:0.5}
+
+/* ===== 游戏主界面 ===== */
+#game-screen{position:fixed;inset:0;display:flex;flex-direction:column}
+
+/* 顶部栏 */
+#top-bar{
+height:42px;display:flex;align-items:center;justify-content:space-between;
+padding:0 16px;background:var(--bg-panel);border-bottom:1px solid var(--border-gold);
+flex-shrink:0;
+}
+.top-left,.top-center,.top-right{display:flex;align-items:center;gap:10px}
+.top-center{font-size:0.85em;color:var(--gold);letter-spacing:0.15em}
+.top-right{font-size:0.85em;color:var(--gold-bright)}
+.cult-badge{
+padding:2px 10px;border:1px solid var(--border-gold);border-radius:2px;
+font-size:0.8em;color:var(--jade);background:rgba(92,184,138,0.08);
+}
+.btn-icon{
+background:none;border:none;color:var(--gold);font-size:1.1em;cursor:pointer;
+padding:2px 6px;transition:all 0.2s;
+}
+.btn-icon:hover{transform:scale(1.2)}
+
+/* 主内容 */
+#main-content{flex:1;display:flex;overflow:hidden}
+
+/* 侧边面板 */
+.side-panel{
+width:220px;background:var(--bg-panel);border-right:1px solid var(--border-gold);
+padding:10px;overflow-y:auto;flex-shrink:0;
+}
+#right-panel{border-right:none;border-left:1px solid var(--border-gold)}
+.panel-header{
+font-size:0.8em;color:var(--gold);letter-spacing:0.3em;text-align:center;
+padding:6px 0;border-bottom:1px solid var(--border-gold);margin-bottom:6px;
+}
+.stat-block{font-size:0.8em;line-height:1.8}
+.stat-row{display:flex;justify-content:space-between;padding:1px 4px}
+.stat-row:hover{background:var(--bg-hover);border-radius:2px}
+.stat-row span:first-child{color:var(--text-dim)}
+.stat-row span:last-child{color:var(--text-bright)}
+
+/* 经验条 */
+.exp-bar-wrap{
+position:relative;height:18px;background:var(--bg-deep);border:1px solid var(--border-gold);
+border-radius:2px;overflow:hidden;margin:4px 0;
+}
+.exp-bar-fill{
+height:100%;background:linear-gradient(90deg,var(--jade),var(--jade-bright));
+transition:width 0.5s ease;width:0%;
+}
+.exp-bar-wrap span{
+position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+font-size:0.7em;color:var(--text-bright);
+}
+
+/* 功能菜单 */
+.menu-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px}
+.btn-menu{
+padding:6px 4px;font-size:0.75em;background:var(--bg-card);border:1px solid transparent;
+color:var(--text-main);cursor:pointer;transition:all 0.2s;border-radius:2px;
+font-family:inherit;text-align:center;
+}
+.btn-menu:hover{background:var(--bg-hover);border-color:var(--border-gold);color:var(--gold-bright)}
+
+/* 中间叙事区 */
+#center-panel{flex:1;display:flex;flex-direction:column;overflow:hidden}
+#narrative-area{flex:1;overflow-y:auto;padding:24px 32px}
+#narrative-text{font-size:0.92em;line-height:2;text-align:justify}
+#narrative-text p{margin-bottom:12px}
+#narrative-text .narration{color:var(--text-main)}
+#narrative-text .dialogue{color:var(--jade-bright);font-style:italic}
+#narrative-text .system-msg{color:var(--gold-bright);text-align:center;margin:12px 0}
+#narrative-text .danger{color:var(--crimson-bright)}
+#narrative-text .thought{color:var(--blue-spirit);font-style:italic}
+#narrative-text .reward{color:var(--gold);font-weight:bold}
+#narrative-text .chapter-title{
+text-align:center;font-size:1.3em;color:var(--gold-bright);letter-spacing:0.3em;
+margin:20px 0;padding:10px;border-top:1px solid var(--border-gold);border-bottom:1px solid var(--border-gold);
+}
+
+/* 选择区 */
+#choice-area{padding:6px 32px 12px;flex-shrink:0;max-height:42vh;overflow-y:auto;overflow-x:hidden}
+#choice-area::-webkit-scrollbar{width:4px}
+.choice-btn{
+display:block;width:100%;text-align:left;
+padding:7px 14px;margin-bottom:4px;
+background:var(--bg-card);border:1px solid var(--border-gold);color:var(--text-main);
+cursor:pointer;transition:all 0.2s;border-radius:2px;font-family:inherit;font-size:0.84em;
+line-height:1.5;
+}
+.choice-btn:hover{background:var(--bg-hover);border-color:var(--gold);color:var(--gold-bright);transform:translateX(4px)}
+.choice-btn .choice-hint{font-size:0.8em;color:var(--text-dim);margin-left:8px}
+
+/* NPC交互按钮网格(紧凑) */
+.choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-bottom:4px}
+.choice-grid .choice-btn{padding:5px 8px;margin-bottom:0;font-size:0.78em;text-align:center;line-height:1.4}
+.choice-grid .choice-btn:hover{transform:scale(1.02)}
+.choice-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;margin-bottom:4px}
+.choice-grid-3 .choice-btn{padding:5px 6px;margin-bottom:0;font-size:0.75em;text-align:center;line-height:1.4}
+.choice-grid-3 .choice-btn:hover{transform:scale(1.02)}
+
+/* 战斗区 */
+#combat-area{padding:8px 32px 16px}
+#combat-info{display:flex;justify-content:space-around;margin-bottom:8px;flex-wrap:wrap;gap:8px}
+.combatant-card{
+background:var(--bg-card);border:1px solid var(--border-gold);border-radius:4px;
+padding:8px 16px;min-width:200px;
+}
+.combatant-name{font-size:0.85em;color:var(--gold-bright);margin-bottom:4px}
+.combatant-hp-bar{
+height:10px;background:var(--bg-deep);border-radius:2px;overflow:hidden;
+border:1px solid var(--border-gold);
+}
+.combatant-hp-fill{height:100%;background:linear-gradient(90deg,var(--crimson),var(--crimson-bright));transition:width 0.3s}
+#combat-actions{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.btn-combat{
+padding:8px 16px;background:var(--bg-card);border:1px solid var(--border-gold);
+color:var(--text-main);cursor:pointer;transition:all 0.2s;border-radius:2px;font-family:inherit;font-size:0.82em;
+}
+.btn-combat:hover{background:var(--bg-hover);border-color:var(--crimson);color:var(--crimson-bright)}
+.btn-combat:disabled{opacity:0.4;cursor:not-allowed}
+#combat-log{
+max-height:120px;overflow-y:auto;background:var(--bg-deep);border:1px solid var(--border-gold);
+border-radius:4px;padding:6px 10px;font-size:0.78em;line-height:1.7;color:var(--text-dim);
+}
+#combat-log .log-player{color:var(--jade-bright)}
+#combat-log .log-enemy{color:var(--crimson-bright)}
+#combat-log .log-system{color:var(--gold-bright)}
+
+/* 右侧背包 */
+.inventory-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.inv-item{
+background:var(--bg-card);border:1px solid transparent;border-radius:2px;
+padding:4px 6px;font-size:0.75em;cursor:pointer;transition:all 0.2s;
+overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.inv-item:hover{background:var(--bg-hover);border-color:var(--border-gold)}
+.inv-item .item-grade-1{color:#aaa}
+.inv-item .item-grade-2{color:var(--jade-bright)}
+.inv-item .item-grade-3{color:var(--blue-spirit)}
+.inv-item .item-grade-4{color:var(--purple-spirit)}
+.inv-item .item-grade-5{color:var(--gold-bright)}
+
+/* 装备栏 */
+.equip-slot{
+display:flex;align-items:center;justify-content:space-between;
+padding:4px 6px;background:var(--bg-card);border:1px solid var(--border-gold);
+border-radius:2px;margin-bottom:4px;font-size:0.75em;
+}
+.slot-label{color:var(--text-dim)}
+.slot-item{color:var(--gold-bright)}
+
+/* 事件日志 */
+.event-log{font-size:0.72em;line-height:1.6;color:var(--text-dim);max-height:200px;overflow-y:auto}
+.event-log .log-entry{padding:2px 0;border-bottom:1px solid rgba(212,168,87,0.05)}
+.event-log .log-entry:last-child{border-bottom:none}
+
+/* 底部栏 */
+#bottom-bar{
+height:36px;display:flex;align-items:center;justify-content:center;gap:2px;
+background:var(--bg-panel);border-top:1px solid var(--border-gold);flex-shrink:0;
+}
+.btn-bottom{
+padding:4px 12px;font-size:0.78em;background:none;border:1px solid transparent;
+color:var(--text-dim);cursor:pointer;transition:all 0.2s;border-radius:2px;font-family:inherit;
+}
+.btn-bottom:hover{color:var(--gold-bright);border-color:var(--border-gold)}
+.btn-bottom.btn-danger:hover{color:var(--crimson-bright);border-color:var(--crimson)}
+
+/* ===== 弹出面板 ===== */
+#modal-overlay{
+position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:200;
+display:flex;align-items:center;justify-content:center;
+}
+#modal-content{
+width:90%;max-width:600px;max-height:80vh;background:var(--bg-panel);
+border:1px solid var(--gold-dim);border-radius:6px;overflow:hidden;
+display:flex;flex-direction:column;box-shadow:var(--shadow-glow);
+}
+#modal-title{
+padding:12px 20px;font-size:1.1em;color:var(--gold-bright);text-align:center;
+border-bottom:1px solid var(--border-gold);letter-spacing:0.2em;
+}
+#modal-body{flex:1;overflow-y:auto;padding:16px 20px;font-size:0.88em;line-height:1.8}
+#modal-footer{padding:10px 20px;border-top:1px solid var(--border-gold);text-align:center}
+
+/* 弹出面板内的元素 */
+.modal-section{margin-bottom:16px}
+.modal-section-title{color:var(--gold);font-size:0.85em;margin-bottom:6px;border-bottom:1px solid var(--border-gold);padding-bottom:4px}
+.modal-item-row{
+display:flex;justify-content:space-between;align-items:center;
+padding:6px 10px;background:var(--bg-card);border:1px solid transparent;border-radius:3px;
+margin-bottom:4px;cursor:pointer;transition:all 0.2s;font-size:0.85em;
+}
+.modal-item-row:hover{background:var(--bg-hover);border-color:var(--border-gold)}
+.modal-item-desc{color:var(--text-dim);font-size:0.85em;margin-top:2px}
+.modal-item-stats{color:var(--jade-bright);font-size:0.8em}
+.item-tooltip{
+position:fixed;background:var(--bg-deep);border:1px solid var(--gold-dim);border-radius:4px;
+padding:8px 12px;font-size:0.8em;z-index:300;max-width:280px;pointer-events:none;
+box-shadow:0 4px 12px rgba(0,0,0,0.5);
+}
+
+/* ===== 结局画面 ===== */
+#ending-screen{
+position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center;
+background:radial-gradient(ellipse at center,#1a1a14 0%,#08080a 70%);
+}
+.ending-content{text-align:center;max-width:600px;padding:40px;animation:fadeInUp 2s ease}
+#ending-icon{font-size:3em;margin-bottom:20px}
+#ending-title{
+font-size:2em;letter-spacing:0.3em;margin-bottom:20px;
+background:linear-gradient(180deg,var(--gold-bright),var(--gold-dim));
+-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+#ending-text{font-size:0.95em;line-height:2;color:var(--text-main);text-align:justify;margin-bottom:20px}
+#ending-achievements{margin-bottom:30px}
+.ending-ach{
+display:inline-block;padding:4px 12px;margin:4px;
+background:rgba(212,168,87,0.1);border:1px solid var(--border-gold);border-radius:2px;
+font-size:0.8em;color:var(--gold-bright);
+}
+
+/* ===== Toast 通知 ===== */
+#toast-container{position:fixed;top:50px;right:20px;z-index:400;display:flex;flex-direction:column;gap:8px}
+.toast{
+background:var(--bg-card);border:1px solid var(--gold-dim);border-radius:4px;
+padding:8px 16px;font-size:0.85em;color:var(--text-bright);
+box-shadow:0 2px 8px rgba(0,0,0,0.3);animation:toastIn 0.3s ease;
+max-width:300px;
+}
+.toast.toast-success{border-color:var(--jade);color:var(--jade-bright)}
+.toast.toast-danger{border-color:var(--crimson);color:var(--crimson-bright)}
+.toast.toast-gold{border-color:var(--gold);color:var(--gold-bright)}
+@keyframes toastIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+
+/* 打字机效果 */
+.typewriter{overflow:hidden}
+
+/* ===== 移动端适配 ===== */
+
+/* 平板适配 */
+@media(max-width:1024px){
+.side-panel{width:180px;font-size:0.85em}
+#narrative-area{padding:16px 20px}
+.choice-btn{padding:12px 16px}
+}
+
+/* ===== 手机端深度适配 ===== */
+@media(max-width:768px){
+:root{
+--gold:#d4a857;--gold-bright:#f0c75e;
+}
+html,body{
+overflow-y:auto;
+-webkit-tap-highlight-color:transparent;
+-webkit-overflow-scrolling:touch;
+}
+/* 标题画面适配 */
+.game-title{font-size:2.4em;letter-spacing:0.2em}
+.game-subtitle{font-size:0.95em;letter-spacing:0.5em}
+.title-divider{width:220px}
+.title-quote{font-size:0.8em;line-height:1.8}
+.btn-title{padding:10px 32px;font-size:0.95em}
+.title-hint{font-size:0.65em;padding:0 20px}
+
+/* 顶部栏 */
+#top-bar{height:38px;padding:0 8px}
+.top-left,#top-right{gap:6px}
+.top-center{display:none}
+.cult-badge{font-size:0.7em;padding:2px 6px}
+#spirit-stone-display{font-size:0.75em}
+.btn-icon{font-size:1em;padding:4px}
+
+/* 主内容区 - 改为标签页模式 */
+#main-content{flex-direction:column;position:relative}
+.side-panel{
+width:100%;height:auto;max-height:none;
+border:none;display:none;
+}
+#left-panel{padding:8px 12px;overflow-y:auto}
+#right-panel{
+border-top:1px solid var(--border-gold);
+padding:8px 12px;overflow-y:auto;
+}
+/* 标签页激活 */
+.side-panel.mobile-active{display:block}
+
+/* 叙事区 */
+#center-panel{flex:1;min-height:0}
+#narrative-area{padding:12px 14px;font-size:0.88em;line-height:1.9}
+#narrative-text{font-size:0.9em;line-height:1.95}
+#narrative-text .chapter-title{font-size:1.1em;letter-spacing:0.2em}
+
+/* 选择区 */
+#choice-area{padding:6px 12px 6px;max-height:38vh;overflow-y:auto}
+.choice-btn{
+padding:10px 12px;margin-bottom:5px;
+font-size:0.84em;line-height:1.4;
+border-radius:4px;
+}
+.choice-btn:active{background:var(--bg-hover);transform:scale(0.98)}
+.choice-btn .choice-hint{display:block;margin-left:0;margin-top:3px;font-size:0.75em}
+/* NPC交互网格在手机端改为2列 */
+.choice-grid{grid-template-columns:1fr 1fr;gap:3px}
+.choice-grid-3{grid-template-columns:1fr 1fr;gap:3px}
+
+/* 战斗区 */
+#combat-area{padding:8px 14px}
+#combat-info{flex-direction:column;gap:6px}
+.combatant-card{min-width:auto;width:100%}
+.combatant-name{font-size:0.8em}
+#combat-actions{gap:6px}
+.btn-combat{
+padding:12px 14px;font-size:0.85em;flex:1;min-width:0;
+text-align:center;border-radius:4px;
+}
+.btn-combat:active{transform:scale(0.97)}
+#combat-log{max-height:100px;font-size:0.75em;padding:8px}
+
+/* 统计栏 */
+.stat-block{font-size:0.78em;line-height:2}
+.exp-bar-wrap{height:16px}
+.exp-bar-wrap span{font-size:0.65em}
+
+/* 功能菜单 */
+.menu-grid{grid-template-columns:1fr 1fr 1fr 1fr;gap:4px;margin-top:6px}
+.btn-menu{padding:10px 4px;font-size:0.72em;border-radius:4px}
+
+/* 背包 */
+.inventory-grid{grid-template-columns:1fr 1fr}
+.inv-item{padding:6px 8px;font-size:0.72em}
+.equip-slot{padding:6px 8px;font-size:0.72em}
+
+/* 底部栏 - 横向滚动标签 */
+#bottom-bar{
+height:auto;min-height:46px;
+padding:4px 4px;gap:2px;
+overflow-x:auto;-webkit-overflow-scrolling:touch;
+justify-content:flex-start;
+scrollbar-width:none;
+-ms-overflow-style:none;
+}
+#bottom-bar::-webkit-scrollbar{display:none}
+.btn-bottom{
+padding:8px 10px;font-size:0.7em;
+white-space:nowrap;flex-shrink:0;
+border-radius:4px;
+}
+.btn-bottom:active{background:var(--bg-hover)}
+
+/* 弹窗适配 */
+#modal-overlay{padding:10px}
+#modal-content{
+width:100%;max-width:none;
+max-height:90vh;border-radius:8px;
+margin:0;
+}
+#modal-title{font-size:1em;padding:10px 14px}
+#modal-body{padding:12px 14px;font-size:0.85em;line-height:1.8}
+#modal-footer{padding:8px 14px}
+.modal-item-row{padding:10px 12px;font-size:0.85em}
+.modal-section-title{font-size:0.82em}
+.save-slot{flex-direction:column;align-items:flex-start;gap:6px;padding:10px}
+.save-slot-actions{width:100%;justify-content:flex-start}
+.save-slot-actions .btn-combat{flex:1;text-align:center}
+.save-toolbar{gap:6px}
+.save-toolbar .btn-combat{flex:1;min-width:0;font-size:0.78em}
+.item-tooltip{max-width:200px;font-size:0.75em}
+
+/* Toast */
+#toast-container{top:44px;right:8px;left:8px}
+.toast{max-width:none;font-size:0.8em;padding:8px 12px}
+
+/* 结局画面 */
+.ending-content{padding:20px 16px}
+#ending-icon{font-size:2.2em}
+#ending-title{font-size:1.4em;letter-spacing:0.2em}
+#ending-text{font-size:0.85em;line-height:1.9}
+.ending-ach{font-size:0.72em;padding:3px 8px}
+
+/* 世界系统移动端适配 */
+.quest-tracker{max-height:140px}
+.quest-name{font-size:0.72em}
+.quest-desc{font-size:0.65em}
+.world-map-container{padding:6px}
+.world-map-svg{min-height:220px;max-height:300px}
+.world-map-svg text{font-size:3.2px}
+.npc-info-card{padding:8px 10px}
+.npc-info-name{font-size:0.88em}
+.npc-info-detail{font-size:0.75em}
+.shop-item-row{padding:10px 12px;flex-direction:column;align-items:flex-start;gap:4px}
+.shop-item-name{font-size:0.85em}
+.shop-item-price{font-size:0.8em}
+.shop-item-buy{width:100%;text-align:center;padding:8px}
+.town-card{padding:10px}
+.town-card-name{font-size:0.85em}
+.town-card-desc{font-size:0.72em}
+.town-card-shops{font-size:0.68em}
+}
+
+/* 超小屏(320px)适配 */
+@media(max-width:380px){
+.game-title{font-size:1.9em;letter-spacing:0.15em}
+.game-subtitle{font-size:0.8em;letter-spacing:0.4em}
+.title-divider{width:180px}
+.btn-title{padding:8px 24px;font-size:0.85em}
+#narrative-text{font-size:0.82em}
+.choice-btn{padding:12px;font-size:0.82em}
+.menu-grid{grid-template-columns:1fr 1fr}
+.btn-menu{font-size:0.7em}
+#bottom-bar .btn-bottom{padding:6px 8px;font-size:0.65em}
+.quest-tracker{max-height:100px}
+.world-map-svg{min-height:180px;max-height:240px}
+.world-map-svg text{font-size:3.5px}
+}
+
+/* 横屏适配 */
+@media(max-width:768px) and (orientation:landscape){
+#main-content{flex-direction:row}
+.side-panel{
+width:160px;height:auto;max-height:none;
+display:block;
+}
+#left-panel{border-right:1px solid var(--border-gold);border-bottom:none}
+#right-panel{border-top:none;border-left:1px solid var(--border-gold)}
+#narrative-area{padding:12px 16px}
+}
+
+/* 禁止选中/长按菜单 */
+@media(max-width:768px){
+*{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+#narrative-text{user-select:text;-webkit-user-select:text}
+}
+
+/* 移动端标签栏 */
+#mobile-tabs{
+display:none;
+}
+@media(max-width:768px) and (orientation:portrait){
+#mobile-tabs{
+display:flex;flex-shrink:0;
+background:var(--bg-panel);border-bottom:1px solid var(--border-gold);
+height:40px;
+}
+.mtab{
+flex:1;background:none;border:none;border-bottom:2px solid transparent;
+color:var(--text-dim);font-size:0.8em;cursor:pointer;font-family:inherit;
+transition:all 0.2s;padding:4px;
+}
+.mtab.active{
+color:var(--gold-bright);border-bottom-color:var(--gold);
+}
+.mtab:active{background:var(--bg-hover)}
+}
+
+/* ===== 存档管理面板 ===== */
+.save-toolbar{
+display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;
+}
+.save-section-title{
+color:var(--gold);font-size:0.9em;margin:12px 0 6px;
+padding-bottom:4px;border-bottom:1px solid var(--border-gold);
+text-align:center;letter-spacing:2px;
+}
+.save-slot{
+display:flex;align-items:center;justify-content:space-between;
+background:var(--bg-card);border:1px solid var(--border-gold);
+border-radius:4px;padding:10px 12px;margin-bottom:6px;
+transition:all 0.2s;gap:8px;
+}
+.save-slot:hover{border-color:var(--gold-dim);background:var(--bg-hover)}
+.save-slot-empty{opacity:0.6}
+.save-slot-info{flex:1;min-width:0}
+.save-slot-name{
+color:var(--gold-bright);font-size:0.95em;font-weight:bold;
+white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.save-slot-detail{
+display:flex;gap:12px;margin-top:3px;font-size:0.78em;color:var(--text-dim);
+flex-wrap:wrap;
+}
+.save-cult{color:var(--jade-bright)}
+.save-slot-time{font-size:0.72em;color:var(--text-dim);margin-top:2px}
+.save-slot-empty-text{color:var(--text-dim);font-size:0.85em;margin-top:4px}
+.save-slot-actions{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.save-slot-actions .btn-combat{font-size:0.75em;padding:4px 10px;white-space:nowrap}
+.btn-save-overwrite{border-color:var(--gold-dim)!important;color:var(--gold-bright)!important}
+.btn-save-new{border-color:var(--jade)!important;color:var(--jade-bright)!important}
+.btn-load{border-color:var(--blue-spirit)!important;color:var(--blue-spirit)!important}
+.btn-del{border-color:var(--crimson)!important;color:var(--crimson-bright)!important;padding:4px 8px!important}
+.save-help{
+margin-top:14px;padding:8px;background:rgba(91,155,213,0.08);
+border-radius:4px;border:1px solid rgba(91,155,213,0.15);
+}
+.save-help p{
+font-size:0.72em;color:var(--text-dim);line-height:1.8;margin:0;
+}
+.btn-title-secondary{
+border-color:var(--blue-spirit)!important;color:var(--blue-spirit)!important;
+}
+.btn-bottom.btn-save{
+border-color:var(--gold-dim);color:var(--gold-bright);
+}
+#modal-content{max-height:85vh;overflow-y:auto}
+
+/* ===== 任务追踪栏 ===== */
+.quest-tracker{
+margin-top:4px;max-height:180px;overflow-y:auto;
+}
+.quest-item{
+background:var(--bg-card);border:1px solid transparent;border-radius:3px;
+padding:5px 8px;margin-bottom:4px;transition:all 0.2s;cursor:pointer;
+}
+.quest-item:hover{background:var(--bg-hover);border-color:var(--border-gold)}
+.quest-clickable:hover{background:var(--bg-hover);border-color:var(--border-gold);box-shadow:0 0 6px var(--border-gold)}
+.quest-name{
+font-size:0.75em;color:var(--gold-bright);font-weight:bold;
+white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.quest-desc{
+font-size:0.68em;color:var(--text-dim);margin-top:2px;
+white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+
+/* ===== 世界地图 ===== */
+.world-map-container{
+width:100%;background:radial-gradient(ellipse at center,#0d1218 0%,#060810 80%);
+border:1px solid var(--border-gold);border-radius:6px;padding:8px;
+margin-bottom:8px;overflow:hidden;
+}
+.world-map-svg{
+width:100%;height:auto;display:block;min-height:280px;max-height:400px;
+}
+.world-map-svg text{
+font-family:"Microsoft YaHei","PingFang SC",sans-serif;
+pointer-events:none;font-weight:600;
+}
+.world-map-svg circle{
+transition:all 0.3s;
+}
+.world-map-svg circle:hover{
+filter:brightness(1.3);
+}
+
+/* ===== NPC信息卡片 ===== */
+.npc-info-card{
+background:var(--bg-card);border:1px solid var(--border-gold);
+border-radius:4px;padding:10px 12px;margin-bottom:8px;
+}
+.npc-info-name{color:var(--gold-bright);font-size:0.95em;font-weight:bold}
+.npc-info-detail{color:var(--text-dim);font-size:0.8em;margin-top:3px;line-height:1.6}
+.npc-info-stats{color:var(--jade-bright);font-size:0.78em;margin-top:3px}
+.npc-mood-bar{
+height:8px;background:var(--bg-deep);border-radius:2px;overflow:hidden;
+border:1px solid var(--border-gold);margin-top:4px;
+}
+.npc-mood-fill{
+height:100%;transition:width 0.4s;
+}
+
+/* ===== 商店物品行增强 ===== */
+.shop-item-row{
+display:flex;justify-content:space-between;align-items:center;
+padding:8px 10px;background:var(--bg-card);border:1px solid transparent;
+border-radius:3px;margin-bottom:5px;transition:all 0.2s;
+}
+.shop-item-row:hover{background:var(--bg-hover);border-color:var(--border-gold)}
+.shop-item-name{color:var(--gold-bright);font-size:0.9em}
+.shop-item-price{color:var(--gold);font-size:0.85em;white-space:nowrap}
+.shop-item-buy{
+padding:4px 12px;font-size:0.75em;background:var(--bg-hover);
+border:1px solid var(--gold-dim);color:var(--gold-bright);
+cursor:pointer;border-radius:2px;font-family:inherit;transition:all 0.2s;
+}
+.shop-item-buy:hover{background:var(--gold-dim);color:var(--text-bright)}
+.shop-item-buy:disabled{opacity:0.4;cursor:not-allowed}
+
+/* ===== 城镇入口卡片 ===== */
+.town-card{
+background:var(--bg-card);border:1px solid var(--border-gold);
+border-radius:4px;padding:10px 12px;margin-bottom:6px;cursor:pointer;
+transition:all 0.2s;
+}
+.town-card:hover{background:var(--bg-hover);border-color:var(--gold)}
+.town-card-name{color:var(--gold-bright);font-size:0.9em;font-weight:bold}
+.town-card-desc{color:var(--text-dim);font-size:0.78em;margin-top:3px;line-height:1.5}
+.town-card-shops{color:var(--jade-bright);font-size:0.72em;margin-top:4px}
+
+/* ===== 任务面板增强 ===== */
+.quest-panel-item{
+background:var(--bg-card);border:1px solid var(--border-gold);
+border-radius:4px;padding:8px 12px;margin-bottom:6px;
+}
+.quest-panel-name{font-size:0.9em;font-weight:bold}
+.quest-panel-desc{color:var(--text-dim);font-size:0.78em;margin-top:3px;line-height:1.5}
+.quest-panel-target{color:var(--jade-bright);font-size:0.75em;margin-top:2px}
+.quest-completed{opacity:0.5}
+
+/* ===== 因果/心魔显示 ===== */
+.karma-display{
+display:inline-block;padding:2px 8px;border-radius:2px;
+font-size:0.75em;margin-left:6px;
+}
+.karma-high{background:rgba(196,77,77,0.15);color:var(--crimson-bright)}
+.karma-low{background:rgba(92,184,138,0.1);color:var(--jade-bright)}
+
+/* ===== 寿命/时辰显示 ===== */
+.stat-row .lifespan-bar{
+display:inline-block;width:60px;height:6px;background:var(--bg-hover);
+border-radius:3px;overflow:hidden;vertical-align:middle;margin-left:4px;
+}
+.stat-row .lifespan-bar-fill{
+height:100%;background:linear-gradient(90deg,var(--jade),var(--gold-bright));
+transition:width 0.4s;
+}
+.stat-row .lifespan-warning{
+color:var(--crimson-bright)!important;animation:pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.6}}
+
+/* ===== NPC详情面板 ===== */
+.npc-detail-grid{
+display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0;
+}
+.npc-detail-cell{
+background:var(--bg-card);border:1px solid var(--border-gold);
+border-radius:3px;padding:6px 8px;font-size:0.8em;
+}
+.npc-detail-label{color:var(--text-dim);font-size:0.75em}
+.npc-detail-value{color:var(--gold-bright);font-size:0.9em;margin-top:2px}
+.npc-detail-section{
+margin-top:8px;padding:8px;background:var(--bg-card);
+border:1px solid var(--border-gold);border-radius:3px;
+}
+.npc-detail-section-title{
+color:var(--gold-bright);font-size:0.85em;margin-bottom:6px;
+border-bottom:1px solid var(--border-gold);padding-bottom:3px;
+}
+.npc-equip-slot{
+display:flex;justify-content:space-between;align-items:center;
+padding:4px 6px;font-size:0.78em;border-bottom:1px solid rgba(212,168,87,0.1);
+}
+.npc-equip-slot:last-child{border-bottom:none}
+.npc-equip-slot-name{color:var(--text-dim)}
+.npc-equip-slot-val{color:var(--gold-bright)}
+.npc-inv-item{
+display:inline-block;padding:2px 8px;margin:2px;font-size:0.75em;
+background:var(--bg-hover);border:1px solid var(--border-gold);border-radius:2px;
+color:var(--text-main);
+}
+.npc-interact-btn{
+padding:6px 10px;font-size:0.78em;margin:3px;
+background:var(--bg-hover);border:1px solid var(--gold-dim);
+color:var(--gold-bright);cursor:pointer;border-radius:2px;
+font-family:inherit;transition:all 0.2s;
+}
+.npc-interact-btn:hover{background:var(--gold-dim);color:var(--text-bright)}
+.npc-interact-btn:disabled{opacity:0.4;cursor:not-allowed}
+
+/* ===== 送礼面板 ===== */
+.gift-panel-grid{
+display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px;
+}
+.gift-item-card{
+background:var(--bg-card);border:1px solid var(--border-gold);
+border-radius:3px;padding:8px;cursor:pointer;transition:all 0.2s;
+text-align:center;
+}
+.gift-item-card:hover{background:var(--bg-hover);border-color:var(--gold)}
+.gift-item-card-name{color:var(--gold-bright);font-size:0.85em}
+.gift-item-card-desc{color:var(--text-dim);font-size:0.72em;margin-top:3px;line-height:1.4}
+.gift-item-card-val{color:var(--jade-bright);font-size:0.75em;margin-top:2px}
+
+/* ===== 后代面板 ===== */
+.offspring-card{
+background:var(--bg-card);border:1px solid var(--border-gold);
+border-radius:4px;padding:10px;margin-bottom:8px;
+}
+.offspring-card-name{color:var(--gold-bright);font-size:0.9em;font-weight:bold}
+.offspring-card-info{color:var(--text-dim);font-size:0.78em;margin-top:3px;line-height:1.5}
+.offspring-talent-S{color:#ff6b6b!important}
+.offspring-talent-A{color:var(--purple-spirit)!important}
+.offspring-talent-B{color:var(--gold-bright)!important}
+.offspring-growth-bar{
+width:100%;height:5px;background:var(--bg-hover);border-radius:3px;
+overflow:hidden;margin:4px 0;
+}
+.offspring-growth-fill{height:100%;background:var(--jade);transition:width 0.4s}
+.offspring-btn{
+padding:4px 8px;font-size:0.72em;margin:2px;
+background:var(--bg-hover);border:1px solid var(--gold-dim);
+color:var(--gold-bright);cursor:pointer;border-radius:2px;font-family:inherit;
+}
+.offspring-btn:hover{background:var(--gold-dim)}
+
+/* ===== 灵山面板 ===== */
+.mountain-panel-grid{
+display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px;
+}
+.mountain-building-card{
+background:var(--bg-card);border:1px solid var(--border-gold);
+border-radius:3px;padding:8px;cursor:pointer;transition:all 0.2s;
+}
+.mountain-building-card:hover{background:var(--bg-hover);border-color:var(--gold)}
+.mountain-building-name{color:var(--gold-bright);font-size:0.82em}
+.mountain-building-level{color:var(--jade-bright);font-size:0.72em;margin-top:2px}
+.mountain-building-cost{color:var(--gold);font-size:0.75em;margin-top:2px}
+.mountain-slot{
+background:var(--bg-hover);border:1px dashed var(--border-gold);
+border-radius:3px;padding:8px;text-align:center;margin-bottom:4px;cursor:pointer;
+transition:all 0.2s;
+}
+.mountain-slot:hover{border-color:var(--gold);background:var(--bg-card)}
+.mountain-slot-empty{color:var(--text-dim);font-size:0.78em}
+.mountain-slot-progress{
+width:100%;height:4px;background:var(--bg-deep);border-radius:2px;
+overflow:hidden;margin-top:4px;
+}
+.mountain-slot-progress-fill{height:100%;background:var(--jade);transition:width 0.4s}
+
+/* ===== 灵宠面板 ===== */
+.pet-card{
+background:var(--bg-card);border:1px solid var(--border-gold);
+border-radius:4px;padding:10px;margin-bottom:8px;
+}
+.pet-card-name{color:var(--gold-bright);font-size:0.9em;font-weight:bold}
+.pet-card-info{color:var(--text-dim);font-size:0.78em;margin-top:3px;line-height:1.5}
+.pet-card-stats{color:var(--jade-bright);font-size:0.75em;margin-top:2px}
+.pet-btn{
+padding:4px 8px;font-size:0.72em;margin:2px;
+background:var(--bg-hover);border:1px solid var(--gold-dim);
+color:var(--gold-bright);cursor:pointer;border-radius:2px;font-family:inherit;
+}
+.pet-btn:hover{background:var(--gold-dim)}
+.pet-btn:disabled{opacity:0.4;cursor:not-allowed}
+
+/* ===== 宗门面板 ===== */
+.sect-card{
+background:var(--bg-card);border:1px solid var(--border-gold);
+border-radius:4px;padding:10px;margin-bottom:8px;cursor:pointer;transition:all 0.2s;
+}
+.sect-card:hover{background:var(--bg-hover);border-color:var(--gold)}
+.sect-card-name{color:var(--gold-bright);font-size:0.9em;font-weight:bold}
+.sect-card-type{color:var(--purple-spirit);font-size:0.75em;margin-left:6px}
+.sect-card-info{color:var(--text-dim);font-size:0.78em;margin-top:3px;line-height:1.5}
+.sect-relation-bar{
+display:inline-block;padding:1px 6px;border-radius:2px;font-size:0.72em;margin-left:4px;
+}
+.sect-rel-friendly{background:rgba(92,184,138,0.15);color:var(--jade-bright)}
+.sect-rel-neutral{background:rgba(122,117,104,0.15);color:var(--text-dim)}
+.sect-rel-hostile{background:rgba(196,77,77,0.15);color:var(--crimson-bright)}
+.sect-rel-vassal{background:rgba(155,109,212,0.15);color:var(--purple-spirit)}
+.sect-rel-ally{background:rgba(91,155,213,0.15);color:var(--blue-spirit)}
+.diplomacy-btn{
+display:block;width:100%;padding:6px 10px;font-size:0.78em;margin:3px 0;
+background:var(--bg-hover);border:1px solid var(--gold-dim);
+color:var(--gold-bright);cursor:pointer;border-radius:2px;font-family:inherit;
+text-align:left;transition:all 0.2s;
+}
+.diplomacy-btn:hover{background:var(--gold-dim)}
+.diplomacy-btn:disabled{opacity:0.4;cursor:not-allowed}
+.diplomacy-btn-desc{color:var(--text-dim);font-size:0.72em;display:block;margin-top:2px}
+
+/* ===== 家园面板 ===== */
+.home-card{
+background:var(--bg-card);border:1px solid var(--border-gold);
+border-radius:4px;padding:10px;margin-bottom:8px;
+}
+.home-card-name{color:var(--gold-bright);font-size:0.9em;font-weight:bold}
+.home-card-info{color:var(--text-dim);font-size:0.78em;margin-top:3px;line-height:1.5}
+.home-btn{
+padding:6px 10px;font-size:0.78em;margin:3px;
+background:var(--bg-hover);border:1px solid var(--gold-dim);
+color:var(--gold-bright);cursor:pointer;border-radius:2px;font-family:inherit;
+}
+.home-btn:hover{background:var(--gold-dim)}
+
+/* ===== 客栈休息面板 ===== */
+.inn-rest-card{
+background:var(--bg-card);border:1px solid var(--border-gold);
+border-radius:4px;padding:10px;margin-bottom:6px;cursor:pointer;transition:all 0.2s;
+}
+.inn-rest-card:hover{background:var(--bg-hover);border-color:var(--gold)}
+.inn-rest-card-title{color:var(--gold-bright);font-size:0.88em}
+.inn-rest-card-desc{color:var(--text-dim);font-size:0.75em;margin-top:3px;line-height:1.4}
+.inn-rest-card-effect{color:var(--jade-bright);font-size:0.75em;margin-top:2px}
+.inn-rest-card-cost{color:var(--gold);font-size:0.78em;margin-top:2px}
+
+/* ===== NPC列表面板 ===== */
+.npc-list-item{
+background:var(--bg-card);border:1px solid var(--border-gold);
+border-radius:3px;padding:8px 10px;margin-bottom:4px;cursor:pointer;
+transition:all 0.2s;display:flex;justify-content:space-between;align-items:center;
+}
+.npc-list-item:hover{background:var(--bg-hover);border-color:var(--gold)}
+.npc-list-item-name{color:var(--gold-bright);font-size:0.85em}
+.npc-list-item-info{color:var(--text-dim);font-size:0.72em;margin-top:2px}
+.npc-list-item-badge{
+display:inline-block;padding:1px 5px;border-radius:2px;font-size:0.68em;margin-left:4px;
+}
+.badge-friend{background:rgba(92,184,138,0.15);color:var(--jade-bright)}
+.badge-spouse{background:rgba(224,102,102,0.15);color:var(--crimson-bright)}
+.badge-child{background:rgba(155,109,212,0.15);color:var(--purple-spirit)}
+
+/* ===== 扩展菜单按钮 ===== */
+.menu-btn-expand{
+font-size:0.85em!important;padding:5px 6px!important;
+}
+
+/* ===== 扩展2: 称号/忠贞/宗门加入/挖角 ===== */
+.title-active{border-color:var(--gold-bright)!important;background:rgba(212,168,87,0.12)!important}
+.title-active::after{content:" ✓";color:var(--gold-bright)}
+.loyalty-bar-wrap{width:100%;height:6px;background:var(--bg-deep);border-radius:3px;margin-top:2px;overflow:hidden}
+.loyalty-bar-fill{height:100%;border-radius:3px;transition:width 0.3s}
+.loyalty-high{background:var(--jade)}
+.loyalty-mid{background:var(--gold)}
+.loyalty-low{background:var(--crimson)}
+.sect-position-badge{display:inline-block;padding:2px 8px;border-radius:3px;font-size:0.72em;background:rgba(155,109,212,0.15);color:var(--purple-spirit);margin-left:4px}
+.poach-method-tag{display:inline-block;padding:1px 5px;border-radius:2px;font-size:0.68em;margin-left:4px}
+.poach-force{background:rgba(196,77,77,0.15);color:var(--crimson-bright)}
+.poach-bribe{background:rgba(212,168,87,0.15);color:var(--gold-bright)}
+.poach-persuade{background:rgba(92,184,138,0.15);color:var(--jade-bright)}
+.cave-rank-badge{display:inline-block;padding:1px 5px;border-radius:2px;font-size:0.68em;margin-left:4px}
+.cave-rank-S{background:rgba(196,77,77,0.2);color:var(--crimson-bright)}
+.cave-rank-A{background:rgba(212,168,87,0.2);color:var(--gold-bright)}
+.cave-rank-B{background:rgba(92,184,138,0.2);color:var(--jade-bright)}
+.cave-rank-C{background:rgba(91,155,213,0.2);color:var(--blue-spirit)}
+.ambush-warning{color:var(--crimson-bright);font-weight:bold;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+.title-display{color:var(--gold-bright);font-size:0.8em;margin-left:4px}
+.social-link-item{padding:6px 8px;border-left:2px solid var(--border-gold);margin-bottom:4px}
+.social-link-type{font-size:0.72em;color:var(--text-dim);margin-bottom:2px}
+
+/* NPC追踪面板样式 */
+.npc-track-row{display:flex;justify-content:space-between;align-items:center;padding:6px 8px;border-bottom:1px solid rgba(212,168,87,0.1)}
+.npc-track-name{color:var(--gold-bright);font-size:0.9em}
+.npc-track-loc{color:var(--jade);font-size:0.8em;margin-top:2px}
+.npc-track-btn{font-size:0.7em!important;padding:3px 8px!important;margin:0!important}
+.travel-time-badge{display:inline-block;padding:1px 6px;border-radius:2px;font-size:0.72em;background:rgba(212,168,87,0.15);color:var(--gold-bright);margin-left:4px}
+.carriage-cost{color:var(--crimson-bright);font-size:0.8em}
+.carriage-time{color:var(--jade);font-size:0.8em}
+
+/* ===== PWA / 安全区域 / 触摸优化 ===== */
+
+/* 安全区域适配（刘海屏/底部Home条） */
+#top-bar{
+padding-top:env(safe-area-inset-top, 0px);
+padding-left:calc(8px + env(safe-area-inset-left, 0px));
+padding-right:calc(8px + env(safe-area-inset-right, 0px));
+}
+#bottom-bar{
+padding-bottom:env(safe-area-inset-bottom, 0px);
+}
+#game-container{
+padding-top:env(safe-area-inset-top, 0px);
+padding-bottom:env(safe-area-inset-bottom, 0px);
+}
+#modal-content{
+margin-top:calc(20px + env(safe-area-inset-top, 0px));
+margin-bottom:env(safe-area-inset-bottom, 0px);
+}
+
+/* 模态弹窗在PWA全屏模式下需留出顶部安全区 */
+@media(display-mode:fullscreen){
+#top-bar{height:calc(44px + env(safe-area-inset-top, 0px))}
+}
+
+/* PWA独立模式下的样式微调 */
+@media(display-mode:standalone),(display-mode:fullscreen){
+html,body{overflow:hidden}
+#title-screen{padding-top:env(safe-area-inset-top, 0px)}
+}
+
+/* 触摸反馈：按下时缩放+高亮 */
+.btn-menu:active,.btn-bottom:active,.btn-combat:active,
+.choice-btn:active,.btn-title:active,.mtab:active{
+transform:scale(0.95);
+filter:brightness(1.2);
+transition:all 0.08s;
+}
+
+/* 防止文字选中（除叙事区外） */
+@media(max-width:768px){
+*{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+#narrative-text{user-select:text;-webkit-user-select:text}
+}
+
+/* 防止图片长按弹出菜单 */
+img{-webkit-user-drag:none;user-select:none}
+
+/* 底部栏在PWA全屏模式留出底部安全区 */
+@media(display-mode:fullscreen) and (max-width:768px){
+#bottom-bar{
+padding-bottom:calc(4px + env(safe-area-inset-bottom, 0px));
+}
+}
+
+/* 横屏全屏模式安全区 */
+@media(display-mode:fullscreen) and (orientation:landscape) and (max-width:1024px){
+#left-panel{padding-left:env(safe-area-inset-left, 0px)}
+#right-panel{padding-right:env(safe-area-inset-right, 0px)}
+}
+
+/* 更平滑的滚动 */
+#narrative-area,#choice-area,#combat-log,#event-log,
+#inventory-list,#quest-tracker,#modal-body{
+-webkit-overflow-scrolling:touch;
+scroll-behavior:smooth;
+overscroll-behavior:contain;
+}
+
+/* 按钮的最小触摸尺寸（44pt = 约44px，iOS HIG标准） */
+@media(max-width:768px){
+.choice-btn{min-height:44px}
+.btn-menu{min-height:40px}
+.btn-bottom{min-height:40px}
+.btn-combat{min-height:44px}
+.btn-title{min-height:50px}
+.mtab{min-height:40px}
+}
+
+/* 隐藏滚动条但保留滚动功能（移动端） */
+@media(max-width:768px){
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-thumb{background:rgba(212,168,87,0.3);border-radius:2px}
+}
+
+/* 标题画面在安装模式下不显示浏览器地址栏提示 */
+@media(display-mode:standalone){
+.title-hint{display:none}
+}
+
+/* 输入框获得焦点时不被键盘遮挡 */
+@media(max-width:768px){
+#modal-content{transition:margin 0.3s}
+}
+
