@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-app-version="v14.20260731">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="凡人修仙">
+<meta name="apple-touch-fullscreen" content="yes">
+<meta name="application-name" content="凡人修仙">
+<meta name="theme-color" content="#0a0e14">
+<meta name="color-scheme" content="dark">
+<meta name="format-detection" content="telephone=no">
+<meta name="description" content="基于《凡人修仙传》小说的MUD文字修仙游戏，离线可玩，随时修仙">
+<meta name="keywords" content="凡人修仙传,MUD,修仙,文字游戏,单机,离线,PWA">
+<meta property="og:title" content="凡人修仙传 · MUD修仙录">
+<meta property="og:description" content="基于《凡人修仙传》小说的MUD文字修仙游戏，60+系统，百万字剧情">
+<meta property="og:type" content="website">
+<meta property="og:image" content="img/icon-512.png">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="img/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="img/icon-512.png">
+<link rel="apple-touch-icon" href="img/icon-192.png">
+<link rel="apple-touch-icon" sizes="120x120" href="img/icon-192.png">
+<link rel="apple-touch-icon" sizes="152x152" href="img/icon-192.png">
+<link rel="apple-touch-icon" sizes="167x167" href="img/icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="img/icon-192.png">
+<link rel="apple-touch-icon" sizes="192x192" href="img/icon-192.png">
+<link rel="mask-icon" href="img/icon.svg" color="#d4a857">
+<title>凡人修仙传 · MUD修仙录</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="game-container">
+<!-- ============ 开场动画 ============ -->
+<div id="title-screen">
+<div class="title-bg-effect"></div>
+<div class="title-content">
+<h1 class="game-title">凡人修仙传</h1>
+<p class="game-subtitle">MUD 修 仙 录</p>
+<div class="title-divider"></div>
+<p class="title-quote">"天行健，君子以自强不息。"<br>"大道无情，我自行我道。"</p>
+<div class="title-buttons">
+<button class="btn-title" onclick="Game.startNewGame()">开始新游戏</button>
+<button class="btn-title" id="btn-continue" onclick="Game.loadGame()" style="display:none;">继续修炼</button>
+<button class="btn-title btn-title-secondary" onclick="UI.showSavePanel('load')">读档管理</button>
+</div>
+<div class="title-hint">提示：本游戏包含多分支剧情、多结局与隐藏成就，请谨慎选择。</div>
+</div>
+</div>
+
+<!-- ============ 主游戏界面 ============ -->
+<div id="game-screen" style="display:none;">
+<!-- 顶部状态栏 -->
+<div id="top-bar">
+<div class="top-left">
+<span id="player-name-display">韩立</span>
+<span id="player-cultivation-display" class="cult-badge">练气一层</span>
+</div>
+<div class="top-center">
+<span id="current-location">七玄门</span>
+</div>
+<div class="top-right">
+<span id="spirit-stone-display">💎 100</span>
+<button class="btn-icon" onclick="UI.showSavePanel('save')" title="存档">📥</button>
+<button class="btn-icon" onclick="UI.showSavePanel('load')" title="读档">📂</button>
+<button class="btn-icon" onclick="Game.saveGame()" title="快速保存">💾</button>
+<button class="btn-icon" onclick="checkAppUpdate()" title="检查更新">🔄</button>
+</div>
+</div>
+
+<!-- 移动端标签栏 -->
+<div id="mobile-tabs" style="display:none;">
+<button class="mtab" data-panel="left" onclick="MobileUI.switchTab('left')">角色</button>
+<button class="mtab active" data-panel="center" onclick="MobileUI.switchTab('center')">剧情</button>
+<button class="mtab" data-panel="right" onclick="MobileUI.switchTab('right')">背包</button>
+</div>
+
+<!-- 主内容区 -->
+<div id="main-content">
+<!-- 左侧角色面板 -->
+<div id="left-panel" class="side-panel">
+<div class="panel-header">道 · 修</div>
+<div class="stat-block">
+<div class="stat-row"><span>气血</span><span id="stat-hp">100/100</span></div>
+<div class="stat-row"><span>灵力</span><span id="stat-mp">50/50</span></div>
+<div class="stat-row"><span>攻击</span><span id="stat-atk">10</span></div>
+<div class="stat-row"><span>防御</span><span id="stat-def">5</span></div>
+<div class="stat-row"><span>速度</span><span id="stat-spd">10</span></div>
+<div class="stat-row"><span>悟性</span><span id="stat-comp">3</span></div>
+<div class="stat-row"><span>机缘</span><span id="stat-luck">5</span></div>
+<div class="stat-row"><span>灵根</span><span id="stat-root">金木水火土</span></div>
+<div class="stat-row"><span>寿元</span><span id="stat-lifespan">16/120年</span></div>
+<div class="stat-row"><span>时辰</span><span id="stat-gametime">第1天</span></div>
+</div>
+<div class="panel-header" style="margin-top:8px;">修 为 进 度</div>
+<div class="exp-bar-wrap">
+<div class="exp-bar-fill" id="exp-bar"></div>
+<span id="exp-text">0/100</span>
+</div>
+<div class="panel-header" style="margin-top:8px;">📋 任 务</div>
+<div id="quest-tracker" class="quest-tracker">
+<div style="color:var(--text-dim);font-size:0.75em;text-align:center;padding:4px;">暂无任务</div>
+</div>
+<div class="panel-header" style="margin-top:8px;">功 能</div>
+<div class="menu-grid">
+<button class="btn-menu" onclick="UI.showPanel('cultivation')">修炼打坐</button>
+<button class="btn-menu" onclick="WorldSystem.showWorldMap()">🗺️世界地图</button>
+<button class="btn-menu" onclick="UI.showPanel('carriage')">🚂驿站</button>
+<button class="btn-menu" onclick="UI.showPanel('town')">🏘️城镇</button>
+<button class="btn-menu" onclick="UI.showPanel('quest')">📋任务</button>
+<button class="btn-menu" onclick="UI.showPanel('equipment')">装备法宝</button>
+<button class="btn-menu" onclick="UI.showPanel('guworm')">仙蛊</button>
+<button class="btn-menu" onclick="UI.showPanel('aperture')">空窍</button>
+<button class="btn-menu" onclick="UI.showPanel('companion')">道侣</button>
+<button class="btn-menu" onclick="UI.showPanel('npctracker')">👥追踪</button>
+<button class="btn-menu" onclick="UI.showPanel('technique')">仙道杀招</button>
+<button class="btn-menu" onclick="UI.showPanel('map')">天下地图</button>
+<button class="btn-menu" onclick="UI.showPanel('achievement')">成就</button>
+<button class="btn-menu" onclick="UI.showPanel('farm')">灵田种植</button>
+<button class="btn-menu" onclick="UI.showPanel('wilderness')">出城探索</button>
+<button class="btn-menu" onclick="UI.showPanel('auction')">拍卖会</button>
+<button class="btn-menu" onclick="UI.showPanel('alchemy')">炼丹炉</button>
+<button class="btn-menu" onclick="UI.showPanel('spiritmountain')">🏔️灵山</button>
+<button class="btn-menu" onclick="UI.showPanel('spiritpet')">🐾灵宠</button>
+<button class="btn-menu" onclick="UI.showPanel('offspring')">👶后代</button>
+<button class="btn-menu" onclick="UI.showPanel('sect')">🏯宗门</button>
+<button class="btn-menu" onclick="UI.showPanel('sectjoin')">⬆️加入/自建宗门</button>
+<button class="btn-menu" onclick="UI.showPanel('title')">🏅称号</button>
+<button class="btn-menu" onclick="UI.showPanel('home')">🏠家园</button>
+<button class="btn-menu" onclick="UI.showPanel('inn')">💤客栈</button>
+<button class="btn-menu" onclick="Game.gotoNode('_expand8_panel')">🔮灵根·同行</button>
+</div>
+</div>
+
+<!-- 中间叙事区 -->
+<div id="center-panel">
+<div id="narrative-area">
+<div id="narrative-text"></div>
+</div>
+<div id="choice-area"></div>
+<div id="combat-area" style="display:none;">
+<div id="combat-info"></div>
+<div id="combat-actions"></div>
+<div id="combat-log"></div>
+</div>
+</div>
+
+<!-- 右侧信息面板 -->
+<div id="right-panel" class="side-panel">
+<div class="panel-header">行 · 囊</div>
+<div id="inventory-list" class="inventory-grid"></div>
+<div class="panel-header" style="margin-top:8px;">装 备</div>
+<div id="equipment-display">
+<div class="equip-slot" id="slot-weapon"><span class="slot-label">武器</span><span class="slot-item">—</span></div>
+<div class="equip-slot" id="slot-armor"><span class="slot-label">防具</span><span class="slot-item">—</span></div>
+<div class="equip-slot" id="slot-accessory"><span class="slot-label">饰品</span><span class="slot-item">—</span></div>
+<div class="equip-slot" id="slot-artifact"><span class="slot-label">法宝</span><span class="slot-item">—</span></div>
+</div>
+<div class="panel-header" style="margin-top:8px;">日 · 志</div>
+<div id="event-log" class="event-log"></div>
+</div>
+</div>
+
+<!-- 底部操作栏 -->
+<div id="bottom-bar">
+<button class="btn-bottom" onclick="UI.showPanel('cultivation')">修炼</button>
+<button class="btn-bottom" onclick="WorldSystem.showWorldMap()">🗺️地图</button>
+<button class="btn-bottom" onclick="UI.showPanel('carriage')">驿站</button>
+<button class="btn-bottom" onclick="UI.showPanel('town')">城镇</button>
+<button class="btn-bottom" onclick="UI.showPanel('quest')">任务</button>
+<button class="btn-bottom" onclick="UI.showPanel('equipment')">装备</button>
+<button class="btn-bottom" onclick="UI.showPanel('guworm')">仙蛊</button>
+<button class="btn-bottom" onclick="UI.showPanel('companion')">道侣</button>
+<button class="btn-bottom" onclick="UI.showPanel('npctracker')">追踪</button>
+<button class="btn-bottom" onclick="UI.showPanel('farm')">灵田</button>
+<button class="btn-bottom" onclick="UI.showPanel('wilderness')">探索</button>
+<button class="btn-bottom" onclick="UI.showPanel('auction')">拍卖</button>
+<button class="btn-bottom" onclick="UI.showPanel('alchemy')">炼丹</button>
+<button class="btn-bottom" onclick="UI.showPanel('spiritmountain')">灵山</button>
+<button class="btn-bottom" onclick="UI.showPanel('spiritpet')">灵宠</button>
+<button class="btn-bottom" onclick="UI.showPanel('offspring')">后代</button>
+<button class="btn-bottom" onclick="UI.showPanel('sect')">宗门</button>
+<button class="btn-bottom" onclick="UI.showPanel('sectjoin')">加入宗门</button>
+<button class="btn-bottom" onclick="UI.showPanel('title')">称号</button>
+<button class="btn-bottom" onclick="UI.showPanel('home')">家园</button>
+<button class="btn-bottom" onclick="UI.showPanel('inn')">客栈</button>
+<button class="btn-bottom" onclick="Game.gotoNode('_expand8_panel')">灵根</button>
+<button class="btn-bottom" onclick="UI.showPanel('achievement')">成就</button>
+<button class="btn-bottom btn-save" onclick="UI.showSavePanel('save')">存档</button>
+<button class="btn-bottom btn-save" onclick="UI.showSavePanel('load')">读档</button>
+<button class="btn-bottom btn-danger" onclick="Game.confirmRestart()">重入轮回</button>
+</div>
+</div>
+
+<!-- ============ 弹出面板 ============ -->
+<div id="modal-overlay" style="display:none;">
+<div id="modal-content">
+<div id="modal-title"></div>
+<div id="modal-body"></div>
+<div id="modal-footer"></div>
+</div>
+</div>
+
+<!-- ============ 结局画面 ============ -->
+<div id="ending-screen" style="display:none;">
+<div class="ending-content">
+<div id="ending-icon"></div>
+<h2 id="ending-title"></h2>
+<p id="ending-text"></p>
+<div id="ending-achievements"></div>
+<button class="btn-title" onclick="location.reload()">再入轮回</button>
+</div>
+</div>
+
+<!-- ============ 通知提示 ============ -->
+<div id="toast-container"></div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/worlddata.js"></script>
+<script src="js/story.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/worldengine.js"></script>
+<script src="js/worldexpand_data.js"></script>
+<script src="js/worldexpand.js"></script>
+<script src="js/worldexpand2_data.js"></script>
+<script src="js/worldexpand2.js"></script>
+<script src="js/worldexpand3.js"></script>
+<script src="js/worldexpand4_data.js"></script>
+<script src="js/worldexpand4.js"></script>
+<script src="js/worldexpand5_data.js"></script>
+<script src="js/worldexpand5.js"></script>
+<script src="js/worldexpand6_data.js"></script>
+<script src="js/worldexpand6.js"></script>
+<script src="js/worldexpand7_data.js"></script>
+<script src="js/worldexpand7.js"></script>
+<script src="js/worldexpand8_data.js"></script>
+<script src="js/worldexpand8.js"></script>
+<script src="js/native-bridge.js"></script>
+<script src="js/main.js"></script>
+<script>
+/* ===== PWA 启动参数处理 (manifest shortcuts) ===== */
+(function handleLaunchParams() {
+  try {
+    var qs = new URLSearchParams(window.location.search);
+    var action = qs.get('action');
+    if (!action) return;
+    window.addEventListener('DOMContentLoaded', function() {
+      setTimeout(function() {
+        try {
+          if (action === 'newgame') {
+            if (typeof Game === 'object' && typeof Game.startNewGame === 'function') {
+              Game.startNewGame();
+            }
+          } else if (action === 'continue') {
+            if (typeof Game === 'object' && typeof Game.loadGame === 'function') {
+              Game.loadGame();
+            }
+          } else if (action === 'savepanel') {
+            if (typeof UI === 'object' && typeof UI.showSavePanel === 'function') {
+              UI.showSavePanel('load');
+            }
+          }
+        } catch (e) {}
+      }, 800);
+    });
+  } catch (e) {}
+})();
+
+/* ===== Service Worker 注册 (PWA离线支持 + 自动更新) ===== */
+var SW_REG = null;
+var PWA_INSTALL_EVENT = null;
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('sw.js')
+      .then(function(reg) {
+        SW_REG = reg;
+        // 检查更新
+        reg.addEventListener('updatefound', function() {
+          var nw = reg.installing;
+          nw.addEventListener('statechange', function() {
+            if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+              // 新版本已下载，提示用户刷新
+              showUpdatePrompt('发现新版本，已准备就绪！', '点击立即更新');
+            }
+          });
+        });
+        // 启动时检查一次更新
+        reg.update();
+      })
+      .catch(function(err) {});
+
+    // 监听来自SW的消息
+    navigator.serviceWorker.addEventListener('message', function(event) {
+      var data = event.data;
+      if (!data) return;
+
+      if (data.type === 'SW_ACTIVATED') {
+        // SW已激活
+      }
+
+      if (data.type === 'UPDATE_CHECKING') {
+        if (typeof showToast === 'function') {
+          showToast('正在检查更新...', 'info');
+        }
+      }
+
+      if (data.type === 'UPDATE_RESULT') {
+        if (data.error) {
+          if (typeof showToast === 'function') {
+            showToast('检查更新失败，可能是离线状态', 'warn');
+          }
+        } else if (data.hasUpdate) {
+          showUpdatePrompt('发现新版本 ' + data.latestVersion, '点击立即更新');
+        } else {
+          if (typeof showToast === 'function') {
+            showToast('当前已是最新版本', 'success');
+          }
+        }
+      }
+
+      if (data.type === 'FORCE_RELOAD') {
+        // 强制重载
+        window.location.reload();
+      }
+    });
+  });
+}
+
+/* ===== 检查更新 ===== */
+function checkAppUpdate() {
+  if (!SW_REG) {
+    if (typeof showToast === 'function') {
+      showToast('离线模式，无法检查更新', 'warn');
+    }
+    return;
+  }
+  SW_REG.update().then(function() {
+    // 同时发送消息给SW做版本比较
+    navigator.serviceWorker.controller && navigator.serviceWorker.controller.postMessage('CHECK_UPDATE');
+    // 如果没有controller（首次安装），直接提示
+    if (!navigator.serviceWorker.controller) {
+      if (typeof showToast === 'function') {
+        showToast('当前已是最新版本', 'success');
+      }
+    }
+  }).catch(function() {
+    if (typeof showToast === 'function') {
+      showToast('检查更新失败', 'danger');
+    }
+  });
+}
+
+/* ===== 显示更新提示 ===== */
+function showUpdatePrompt(title, btnText) {
+  // 创建更新提示弹窗
+  var existing = document.getElementById('update-prompt');
+  if (existing) existing.remove();
+
+  var overlay = document.createElement('div');
+  overlay.id = 'update-prompt';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:99999;display:flex;align-items:center;justify-content:center;';
+
+  var box = document.createElement('div');
+  box.style.cssText = 'background:var(--bg-card,#1a2332);border:1px solid var(--gold,#d4a857);border-radius:12px;padding:24px 32px;max-width:360px;text-align:center;box-shadow:0 0 40px rgba(212,168,87,0.3);';
+
+  var icon = document.createElement('div');
+  icon.style.cssText = 'font-size:48px;margin-bottom:12px;';
+  icon.textContent = '🔄';
+
+  var titleEl = document.createElement('div');
+  titleEl.style.cssText = 'color:var(--gold-bright,#f0c75e);font-size:18px;font-weight:bold;margin-bottom:8px;';
+  titleEl.textContent = title;
+
+  var desc = document.createElement('div');
+  desc.style.cssText = 'color:var(--text-dim,#7a7568);font-size:13px;margin-bottom:16px;';
+  desc.textContent = '更新后将重新加载游戏，请确保已保存进度。';
+
+  var btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;gap:12px;justify-content:center;';
+
+  var btnUpdate = document.createElement('button');
+  btnUpdate.style.cssText = 'background:var(--gold,#d4a857);color:#0a0e14;border:none;padding:10px 24px;border-radius:6px;font-size:14px;font-weight:bold;cursor:pointer;';
+  btnUpdate.textContent = btnText;
+  btnUpdate.onclick = function() {
+    // 通知SW强制更新
+    if (navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage('FORCE_UPDATE');
+    }
+    // 同时直接刷新
+    setTimeout(function() { window.location.reload(); }, 500);
+  };
+
+  var btnLater = document.createElement('button');
+  btnLater.style.cssText = 'background:transparent;color:var(--text-dim,#7a7568);border:1px solid var(--text-dim,#7a7568);padding:10px 20px;border-radius:6px;font-size:13px;cursor:pointer;';
+  btnLater.textContent = '稍后';
+  btnLater.onclick = function() { overlay.remove(); };
+
+  btnRow.appendChild(btnUpdate);
+  btnRow.appendChild(btnLater);
+  box.appendChild(icon);
+  box.appendChild(titleEl);
+  box.appendChild(desc);
+  box.appendChild(btnRow);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+
+  // 8秒后自动消失（如果用户不操作）
+  setTimeout(function() {
+    if (document.getElementById('update-prompt')) {
+      overlay.remove();
+    }
+  }, 8000);
+}
+
+/* ===== PWA 安装提示 ===== */
+window.addEventListener('beforeinstallprompt', function(e) {
+  e.preventDefault();
+  PWA_INSTALL_EVENT = e;
+  // 延迟显示安装提示
+  setTimeout(function() {
+    if (window.localStorage.getItem('pwa_install_dismissed')) return;
+    showPWAInstallPrompt();
+  }, 5000);
+});
+
+function showPWAInstallPrompt() {
+  if (!PWA_INSTALL_EVENT) return;
+
+  var existing = document.getElementById('pwa-install-prompt');
+  if (existing) existing.remove();
+
+  var btn = document.createElement('div');
+  btn.id = 'pwa-install-prompt';
+  btn.style.cssText = 'position:fixed;top:12px;right:12px;background:var(--bg-card,#1a2332);border:1px solid var(--gold,#d4a857);border-radius:8px;padding:8px 12px;display:flex;align-items:center;gap:8px;z-index:99998;box-shadow:0 4px 16px rgba(0,0,0,0.5);cursor:pointer;transition:all 0.2s;';
+
+  btn.innerHTML = '<span style="font-size:20px;">📲</span>' +
+    '<span style="color:var(--gold-bright,#f0c75e);font-size:13px;font-weight:bold;">安装桌面版</span>' +
+    '<span style="color:var(--text-dim,#7a7568);font-size:16px;margin-left:4px;">›</span>';
+
+  btn.onclick = function() {
+    PWA_INSTALL_EVENT.prompt();
+    PWA_INSTALL_EVENT.userChoice.then(function(choice) {
+      if (choice.outcome === 'accepted') {
+        if (typeof showToast === 'function') showToast('安装成功！可在主屏幕打开', 'success');
+      }
+      PWA_INSTALL_EVENT = null;
+      btn.remove();
+    });
+  };
+
+  btn.onmouseenter = function() { btn.style.borderColor = 'var(--gold-bright,#f0c75e)'; btn.style.boxShadow = '0 4px 20px rgba(240,199,94,0.3)'; };
+  btn.onmouseleave = function() { btn.style.borderColor = 'var(--gold,#d4a857)'; btn.style.boxShadow = '0 4px 16px rgba(0,0,0,0.5)'; };
+
+  btn.oncontextmenu = function(e) {
+    e.preventDefault();
+    window.localStorage.setItem('pwa_install_dismissed', '1');
+    btn.remove();
+  };
+
+  document.body.appendChild(btn);
+
+  setTimeout(function() {
+    if (document.getElementById('pwa-install-prompt')) {
+      btn.remove();
+    }
+  }, 15000);
+}
+
+/* ===== 移动端体验优化 ===== */
+(function() {
+  // 阻止双击缩放
+  var lastTouch = 0;
+  document.addEventListener('touchend', function(e) {
+    var now = Date.now();
+    if (now - lastTouch <= 300) { e.preventDefault(); }
+    lastTouch = now;
+  }, { passive: false });
+
+  // 阻止下拉刷新（非叙事区）
+  document.addEventListener('touchmove', function(e) {
+    var el = e.target;
+    var scrollable = false;
+    while (el && el !== document.body) {
+      var style = window.getComputedStyle(el);
+      if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
+        scrollable = true;
+        break;
+      }
+      el = el.parentElement;
+    }
+    if (!scrollable && (document.scrollingElement.scrollTop || document.body.scrollTop) === 0) {
+      // 允许在可滚动区域内的触摸移动
+    }
+  }, { passive: true });
+
+  // 阻止iOS橡皮筋效果在外层
+  document.body.addEventListener('touchstart', function(){}, { passive: true });
+
+  // 防止键盘弹出时页面跳动
+  window.addEventListener('resize', function() {
+    if (document.activeElement && document.activeElement.tagName === 'INPUT') {
+      setTimeout(function() {
+        document.activeElement.scrollIntoView({ block: 'center' });
+      }, 300);
+    }
+  });
+})();
+</script>
+</body>
+</html>
