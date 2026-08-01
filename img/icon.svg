@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bgGrad" cx="50%" cy="40%" r="80%">
+      <stop offset="0%" stop-color="#1a1f2e"/>
+      <stop offset="60%" stop-color="#0d1117"/>
+      <stop offset="100%" stop-color="#060a0e"/>
+    </radialGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f5d061"/>
+      <stop offset="50%" stop-color="#d4a857"/>
+      <stop offset="100%" stop-color="#b8860b"/>
+    </linearGradient>
+    <linearGradient id="goldGlow" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffd700" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#b8860b" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- 背景 -->
+  <rect width="512" height="512" rx="80" fill="url(#bgGrad)"/>
+  
+  <!-- 外圆环 -->
+  <circle cx="256" cy="256" r="200" fill="none" stroke="url(#goldGrad)" stroke-width="3" opacity="0.4"/>
+  <circle cx="256" cy="256" r="180" fill="none" stroke="url(#goldGrad)" stroke-width="2" opacity="0.2"/>
+  
+  <!-- 中心太极/丹田图案 -->
+  <g transform="translate(256, 240)">
+    <!-- 太极外圆 -->
+    <circle cx="0" cy="0" r="90" fill="none" stroke="url(#goldGrad)" stroke-width="4" filter="url(#glow)"/>
+    <!-- 太极S曲线 -->
+    <path d="M 0,-90 A 45,45 0 0,1 0,0 A 45,45 0 0,0 0,90 A 90,90 0 0,1 0,-90 Z" fill="url(#goldGrad)" opacity="0.85"/>
+    <!-- 小圆点 -->
+    <circle cx="0" cy="-45" r="12" fill="#0d1117"/>
+    <circle cx="0" cy="45" r="12" fill="url(#goldGrad)"/>
+  </g>
+  
+  <!-- 上方剑图案 -->
+  <g transform="translate(256, 90) rotate(0)">
+    <line x1="0" y1="-20" x2="0" y2="20" stroke="url(#goldGrad)" stroke-width="5" stroke-linecap="round" filter="url(#glow)"/>
+    <line x1="-15" y1="-5" x2="15" y2="-5" stroke="url(#goldGrad)" stroke-width="4" stroke-linecap="round"/>
+    <polygon points="0,-30 3,-20 -3,-20" fill="url(#goldGrad)" filter="url(#glow)"/>
+  </g>
+  
+  <!-- 底部文字"仙" -->
+  <text x="256" y="410" text-anchor="middle" font-family="serif" font-size="80" font-weight="bold" fill="url(#goldGrad)" filter="url(#glow)">仙</text>
+  
+  <!-- 装饰星点 -->
+  <circle cx="80" cy="80" r="3" fill="#f5d061" opacity="0.6"/>
+  <circle cx="432" cy="80" r="3" fill="#f5d061" opacity="0.6"/>
+  <circle cx="80" cy="432" r="3" fill="#f5d061" opacity="0.6"/>
+  <circle cx="432" cy="432" r="3" fill="#f5d061" opacity="0.6"/>
+  <circle cx="256" cy="50" r="2" fill="#f5d061" opacity="0.4"/>
+  <circle cx="120" cy="160" r="2" fill="#f5d061" opacity="0.3"/>
+  <circle cx="392" cy="160" r="2" fill="#f5d061" opacity="0.3"/>
+</svg>
