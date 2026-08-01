@@ -1,0 +1,96 @@
+{
+  "id": "fanren-mud-v14",
+  "name": "凡人修仙传 MUD修仙录",
+  "short_name": "凡人修仙",
+  "description": "基于《凡人修仙传》小说的MUD文字修仙游戏，含修炼、炼丹、宗门、道侣、灵山、灵根、同行等60+系统",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": ["window-controls-overlay", "fullscreen", "standalone", "minimal-ui", "browser"],
+  "orientation": "any",
+  "background_color": "#0a0e14",
+  "theme_color": "#0a0e14",
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "categories": ["games", "entertainment", "roleplaying"],
+  "prefer_related_applications": false,
+  "launch_handler": {
+    "client_mode": "navigate-existing",
+    "route_to": "auto"
+  },
+  "file_handlers": [
+    {
+      "action": "./index.html",
+      "name": "凡人修仙存档",
+      "accept": { "application/json": [".frsave"] }
+    }
+  ],
+  "edge_side_panel": {
+    "preferred_width": 420
+  },
+  "icons": [
+    {
+      "src": "img/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "img/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "img/icon-192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "img/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "img/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "label": "游戏封面",
+      "form_factor": "wide"
+    },
+    {
+      "src": "img/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "label": "修炼界面",
+      "form_factor": "narrow"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "开始新游戏",
+      "short_name": "新游戏",
+      "description": "从头开始新的修仙之旅",
+      "url": "./index.html?action=newgame",
+      "icons": [{ "src": "img/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "继续修炼",
+      "short_name": "继续",
+      "description": "载入最近一次存档继续游戏",
+      "url": "./index.html?action=continue",
+      "icons": [{ "src": "img/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "读档管理",
+      "short_name": "读档",
+      "description": "打开存档管理界面",
+      "url": "./index.html?action=savepanel",
+      "icons": [{ "src": "img/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
