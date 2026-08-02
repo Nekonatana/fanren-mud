@@ -11,6 +11,7 @@ const UI = {
   // ===== 渲染叙事文本 =====
   renderNarrative(textArr) {
     const container = document.getElementById('narrative-text');
+    if (!container) return;
     container.innerHTML = '';
     
     textArr.forEach(line => {
@@ -49,6 +50,7 @@ const UI = {
   // ===== 渲染选项 =====
   renderChoices(choices) {
     const container = document.getElementById('choice-area');
+    if (!container) return;
     container.innerHTML = '';
     
     // 如果有 compact 标记，将交互类选项放入网格，其余保持普通按钮
@@ -113,6 +115,10 @@ const UI = {
           return;
         }
       }
+      // 先应用 choice.effect（发放物品/功法/flag/属性/exp 等），再跳转
+      if (choice.effect && typeof Game.applyEffects === 'function') {
+        Game.applyEffects(choice.effect);
+      }
       Game.gotoNode(choice.next);
     };
     container.appendChild(btn);
@@ -123,12 +129,37 @@ const UI = {
     const s = Game.state;
     if (!s) return false;
     if (cond.comp && cond.comp.includes(">=")) {
-      const val = parseInt(cond.comp.match(/\d+/)[0]);
+      const m = cond.comp.match(/\d+/);
+      const val = m ? parseInt(m[0]) : 0;
       return s.comp >= val;
     }
     if (cond.atk && cond.atk.includes(">=")) {
-      const val = parseInt(cond.atk.match(/\d+/)[0]);
+      const m = cond.atk.match(/\d+/);
+      const val = m ? parseInt(m[0]) : 0;
       return s.atk >= val;
+    }
+    // 检查 flag（flags 为对象，使用属性检查）
+    if (cond.flag) {
+      return s.flags && s.flags[cond.flag];
+    }
+    // 反向 flag：存在则隐藏该选项
+    if (cond.notFlag) {
+      return !(s.flags && s.flags[cond.notFlag]);
+    }
+    // 检查物品
+    if (cond.item) {
+      const invItem = s.inventory ? s.inventory.find(i => i.id === cond.item) : null;
+      if (!invItem) return false;
+      if (cond.itemCount && invItem.count < cond.itemCount) return false;
+      return true;
+    }
+    // 检查支线任务是否活跃
+    if (cond.questActive) {
+      return s.storyQuests && s.storyQuests.some(q => q.id === cond.questActive);
+    }
+    // 反向任务检查：任务已接取则隐藏该选项
+    if (cond.notQuestActive) {
+      return !(s.storyQuests && s.storyQuests.some(q => q.id === cond.notQuestActive));
     }
     return true;
   },
@@ -148,22 +179,65 @@ const UI = {
   updateCombat(combatState) {
     const s = Game.state;
     const info = document.getElementById('combat-info');
-    
+
     const playerHpPct = Math.max(0, (s.hp / s.maxHp) * 100);
     const enemyHpPct = Math.max(0, (combatState.enemyHp / combatState.enemyMaxHp) * 100);
-    
+
+    // 构建队友卡片HTML
+    let partyHtml = '';
+    if (s.party && s.party.length > 0) {
+      s.party.forEach(memberId => {
+        let memName = '', memAtk = 0, memDef = 0;
+        if (memberId.startsWith('comp_')) {
+          const compId = memberId.replace('comp_', '');
+          const comp = typeof COMPANIONS !== 'undefined' ? COMPANIONS[compId] : null;
+          if (!comp) return;
+          const cData = (s.companionData && s.companionData[compId]) || {level:1, affinity:0};
+          const lvlMult = 1 + (cData.level - 1) * (typeof COMPANION_LEVEL_DATA !== 'undefined' ? COMPANION_LEVEL_DATA.atkGrowth : 0.15);
+          memName = comp.name;
+          memAtk = Math.floor(comp.atkBonus * lvlMult);
+          memDef = Math.floor(comp.defBonus * (1 + (cData.level - 1) * (typeof COMPANION_LEVEL_DATA !== 'undefined' ? COMPANION_LEVEL_DATA.defGrowth : 0.12)));
+        } else {
+          const npc = s.npcList ? s.npcList.find(n => n.id === memberId) : null;
+          if (!npc) return;
+          memName = npc.name;
+          memAtk = npc.atk || 10;
+          memDef = npc.def || 5;
+        }
+        partyHtml += `
+          <div class="combatant-card" style="border-color:var(--jade);flex:1;min-width:120px;">
+            <div class="combatant-name" style="font-size:0.9em;">🚶 ${memName}</div>
+            <div style="font-size:0.7em;color:var(--jade);">队友助战中</div>
+            <div style="font-size:0.75em;margin-top:4px;">攻:${memAtk} 防:${memDef}</div>
+          </div>`;
+      });
+    } else if (s.travelCompanion && typeof WorldSystem !== 'undefined' && typeof WorldSystem.getTravelCompanionCombat === 'function') {
+      const tc = WorldSystem.getTravelCompanionCombat(s);
+      if (tc) {
+        partyHtml += `
+          <div class="combatant-card" style="border-color:var(--jade);flex:1;min-width:120px;">
+            <div class="combatant-name" style="font-size:0.9em;">🚶 ${tc.name}</div>
+            <div style="font-size:0.7em;color:var(--jade);">队友助战中</div>
+            <div style="font-size:0.75em;margin-top:4px;">攻:${tc.atk} 防:${tc.def || 0}</div>
+          </div>`;
+      }
+    }
+
     info.innerHTML = `
-      <div class="combatant-card">
-        <div class="combatant-name">${s.name} <span style="font-size:0.8em;color:var(--jade);">[${CULT_LEVELS[s.cultLevel].name}]</span></div>
-        <div style="font-size:0.75em;color:var(--text-dim);">HP: ${Math.max(0,s.hp)}/${s.maxHp} | MP: ${Math.max(0,s.mp)}/${s.maxMp}</div>
-        <div class="combatant-hp-bar"><div class="combatant-hp-fill" style="width:${playerHpPct}%;background:linear-gradient(90deg,var(--jade),var(--jade-bright))"></div></div>
-        <div style="font-size:0.75em;margin-top:4px;">攻:${s.atk} 防:${s.def}</div>
-      </div>
-      <div class="combatant-card">
-        <div class="combatant-name">${combatState.enemy.name}</div>
-        <div style="font-size:0.75em;color:var(--text-dim);">HP: ${combatState.enemyHp}/${combatState.enemyMaxHp}</div>
-        <div class="combatant-hp-bar"><div class="combatant-hp-fill" style="width:${enemyHpPct}%"></div></div>
-        <div style="font-size:0.75em;margin-top:4px;">攻:${combatState.enemy.atk} 防:${combatState.enemy.def}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <div class="combatant-card" style="flex:1;min-width:140px;">
+          <div class="combatant-name">${s.name} <span style="font-size:0.8em;color:var(--jade);">[${CULT_LEVELS[s.cultLevel].name}]</span></div>
+          <div style="font-size:0.75em;color:var(--text-dim);">HP: ${Math.max(0,s.hp)}/${s.maxHp} | MP: ${Math.max(0,s.mp)}/${s.maxMp}</div>
+          <div class="combatant-hp-bar"><div class="combatant-hp-fill" style="width:${playerHpPct}%;background:linear-gradient(90deg,var(--jade),var(--jade-bright))"></div></div>
+          <div style="font-size:0.75em;margin-top:4px;">攻:${s.atk} 防:${s.def}</div>
+        </div>
+        ${partyHtml}
+        <div class="combatant-card" style="flex:1;min-width:140px;border-color:var(--crimson);">
+          <div class="combatant-name">${combatState.enemy.name}</div>
+          <div style="font-size:0.75em;color:var(--text-dim);">HP: ${combatState.enemyHp}/${combatState.enemyMaxHp}</div>
+          <div class="combatant-hp-bar"><div class="combatant-hp-fill" style="width:${enemyHpPct}%"></div></div>
+          <div style="font-size:0.75em;margin-top:4px;">攻:${combatState.enemy.atk} 防:${combatState.enemy.def}</div>
+        </div>
       </div>
     `;
     
@@ -317,9 +391,13 @@ const UI = {
     if (!s) return;
     const slots = {weapon:"slot-weapon",armor:"slot-armor",accessory:"slot-accessory",artifact:"slot-artifact"};
     Object.keys(slots).forEach(slot => {
-      const el = document.getElementById(slots[slot]).querySelector('.slot-item');
+      const wrap = document.getElementById(slots[slot]);
+      if (!wrap) return;
+      const el = wrap.querySelector('.slot-item');
+      if (!el) return;
       const itemId = s.equipment[slot];
-      el.textContent = itemId ? ITEMS[itemId].name : '—';
+      var eqDef = itemId ? ITEMS[itemId] : null;
+      el.textContent = eqDef ? eqDef.name : '—';
       el.style.color = itemId ? 'var(--gold-bright)' : 'var(--text-dim)';
     });
   },
@@ -351,6 +429,7 @@ const UI = {
       case 'guworm': Game.showGuWormPanel(); break;
       case 'aperture': Game.showAperturePanel(); break;
       case 'companion': Game.showCompanionPanel(); break;
+      case 'party': Game.showPartyPanel(); break;
       case 'npctracker': WorldSystem.showNPCTrackerPanel(); break;
       case 'technique': Game.showTechniquePanel(); break;
       case 'map': WorldSystem.showWorldMap(); break;
@@ -371,6 +450,9 @@ const UI = {
       case 'inn': WorldSystem.showInnRestPanel(); break;
       case 'title': WorldSystem.showTitlePanel(); break;
       case 'sectranking': WorldSystem.showSectRankingPanel(); break;
+      case 'anchors': Game.showAnchorsPanel(); break;
+      case 'debts': Game.showDebtsPanel(); break;
+      case 'social': UI.showSocialPanel(); break;
     }
   },
   
@@ -391,9 +473,55 @@ const UI = {
     document.getElementById('modal-overlay').style.display = 'none';
   },
   
+  // ===== 社会动作面板：显示附近NPC并允许交互 =====
+  showSocialPanel() {
+    const s = Game.state;
+    if (!s) return;
+    if (typeof SocialSystem === 'undefined') {
+      this.toast("社会系统未加载", "danger");
+      return;
+    }
+    // 获取当前区域的NPC
+    var npcs = [];
+    if (s.npcList) {
+      npcs = s.npcList.filter(function(n) { return n.isAlive !== false; }).slice(0, 20);
+    }
+    var html = '<div class="modal-section"><div class="modal-section-title">社会动作</div>';
+    html += '<div style="font-size:0.8em;color:var(--text-dim);margin-bottom:8px;">选择NPC进行交谈、送礼、结交、偷窃等社会行为</div>';
+    if (npcs.length === 0) {
+      html += '<div style="text-align:center;padding:16px;color:var(--text-dim);">附近没有可交互的NPC，请先探索野外或前往城镇</div>';
+    } else {
+      npcs.forEach(function(npc) {
+        var moodColor = npc.mood > 50 ? 'var(--jade)' : (npc.mood > 20 ? 'var(--gold)' : 'var(--crimson)');
+        var cultName = npc.cultName || (typeof CULT_LEVELS !== 'undefined' && CULT_LEVELS[npc.cultLevel] ? CULT_LEVELS[npc.cultLevel].name : '凡人');
+        html += '<div class="modal-item-row" style="flex-direction:column;align-items:flex-start;">';
+        html += '<div style="width:100%;display:flex;justify-content:space-between;">';
+        html += '<div><div style="color:var(--gold-bright);">' + npc.name + '</div>';
+        html += '<div class="modal-item-desc">[' + cultName + '] 好感：<span style="color:' + moodColor + ';">' + (npc.mood || 0) + '</span></div></div>';
+        html += '<div style="display:flex;gap:4px;flex-wrap:wrap;">';
+        html += '<button class="btn-combat" style="font-size:0.7em;padding:4px 8px;" onclick="Game.socialAction(\'talk\',\'' + npc.id + '\')">交谈</button>';
+        html += '<button class="btn-combat" style="font-size:0.7em;padding:4px 8px;" onclick="Game.socialAction(\'probe\',\'' + npc.id + '\')">试探</button>';
+        html += '<button class="btn-combat" style="font-size:0.7em;padding:4px 8px;" onclick="Game.socialAction(\'befriend\',\'' + npc.id + '\')">结交</button>';
+        html += '<button class="btn-combat" style="font-size:0.7em;padding:4px 8px;border-color:var(--crimson);color:var(--crimson);" onclick="Game.socialAction(\'steal\',\'' + npc.id + '\')">偷窃</button>';
+        html += '</div></div></div>';
+      });
+    }
+    html += '</div>';
+    this.showModalBody(html, '<button class="btn-combat" onclick="UI.closeModal()">关闭</button>');
+  },
+  
   // ===== Toast通知 =====
   toast(msg, type='') {
     const container = document.getElementById('toast-container');
+    if (!container) return;
+    // 限制最多同时显示 5 条 toast，超出移除最早的
+    const MAX_TOASTS = 5;
+    const existing = container.querySelectorAll('.toast');
+    if (existing.length >= MAX_TOASTS) {
+      for (let i = 0; i <= existing.length - MAX_TOASTS; i++) {
+        if (existing[i]) existing[i].remove();
+      }
+    }
     const toast = document.createElement('div');
     toast.className = 'toast ' + (type ? 'toast-' + type : '');
     toast.textContent = msg;
@@ -476,12 +604,56 @@ const UI = {
           html += '<div class="quest-desc">击败 ' + traitorName + ' @ ' + locName + '</div>';
         } else if (quest.type === "submit_material") {
           const itemName = ITEMS[quest.requiredItem] ? ITEMS[quest.requiredItem].name : quest.requiredItem;
-          const has = (s.items && s.items[quest.requiredItem]) || 0;
+          const invItem = s.inventory ? s.inventory.find(i => i.id === quest.requiredItem) : null;
+          const has = invItem ? invItem.count : 0;
           html += '<div class="quest-desc">' + itemName + ' (' + has + '/' + quest.requiredCount + ') @ ' + locName + '</div>';
         } else if (quest.type === "check_location") {
           const targetName = WORLD_MAP[quest.targetLocation] ? WORLD_MAP[quest.targetLocation].name : quest.targetLocation;
           html += '<div class="quest-desc">前往 ' + targetName + '</div>';
         }
+        html += '</div>';
+        totalQuests++;
+      });
+    }
+
+    // 扩展支线任务（worldexpand4 activeSideQuests）
+    if (s.activeSideQuests && s.activeSideQuests.length > 0 && typeof SIDE_QUESTS !== 'undefined') {
+      s.activeSideQuests.slice(0, 3).forEach(sqId => {
+        if (totalQuests >= 3) return;
+        const sq = SIDE_QUESTS[sqId];
+        if (!sq) return;
+        // 尝试找到该支线NPC所在区域
+        var sqLoc = '';
+        if (s.sideQuestNPCs) {
+          for (var area in s.sideQuestNPCs) {
+            if (s.sideQuestNPCs[area] && s.sideQuestNPCs[area].includes(sqId)) { sqLoc = area; break; }
+          }
+        }
+        var clickable = sqLoc && typeof WorldSystem !== 'undefined' && WORLD_MAP && WORLD_MAP[sqLoc];
+        if (clickable) {
+          html += '<div class="quest-item quest-clickable" onclick="Game.gotoNode(\'_side_quest_go_' + sqLoc + '\')" style="cursor:pointer;">';
+        } else {
+          html += '<div class="quest-item">';
+        }
+        html += '<div class="quest-name">📜 ' + sq.name + '</div>';
+        html += '<div class="quest-desc">' + sq.target + (sqLoc ? ' [' + (WORLD_MAP[sqLoc] ? WORLD_MAP[sqLoc].name : sqLoc) + ']' : '') + '</div>';
+        html += '</div>';
+        totalQuests++;
+      });
+    }
+
+    // 主线自定义支线任务（storyQuests，由 story.js 接取）
+    if (s.storyQuests && s.storyQuests.length > 0) {
+      s.storyQuests.forEach(sq => {
+        if (totalQuests >= 3) return;
+        var clickable = sq.area && typeof WorldSystem !== 'undefined';
+        if (clickable) {
+          html += '<div class="quest-item quest-clickable" onclick="Game.gotoNode(\'_story_quest_go_' + sq.area + '\')" style="cursor:pointer;">';
+        } else {
+          html += '<div class="quest-item">';
+        }
+        html += '<div class="quest-name">📋 ' + sq.name + '</div>';
+        html += '<div class="quest-desc">' + sq.desc + (sq.area ? ' [' + sq.areaName + ']' : '') + '</div>';
         html += '</div>';
         totalQuests++;
       });
