@@ -70,6 +70,7 @@ Object.assign(WorldSystem, {
     if (!npc) return;
     if (npc.spiritRoot) return;
     var isGenius = false;
+    var computedTier = null;
     // 宗门天骄/高层有更好的灵根
     if (npc.sectPosition && (npc.sectPosition.includes('天骄') || npc.sectPosition.includes('圣女') || npc.sectPosition.includes('少主'))) {
       var weights = SECT_GENIUS_ROOT_WEIGHTS;
@@ -80,9 +81,27 @@ Object.assign(WorldSystem, {
         cumulative += weights[i];
         if (roll < cumulative) { tier = i; break; }
       }
+      computedTier = tier;
       isGenius = true;
     }
-    npc.spiritRoot = this.generateSpiritRoot(isGenius);
+    if (computedTier !== null) {
+      var allElements = (typeof SPIRIT_ELEMENTS !== 'undefined') ? SPIRIT_ELEMENTS.slice() : ['金','木','水','火','土'];
+      var elements = [];
+      var elemCount;
+      if (computedTier === 0) elemCount = 5;
+      else if (computedTier === 1) elemCount = 4;
+      else if (computedTier === 2) elemCount = 3;
+      else if (computedTier === 3) elemCount = 2;
+      else elemCount = 1;
+      for (var j = 0; j < elemCount; j++) {
+        var idx = Math.floor(Math.random() * allElements.length);
+        elements.push(allElements[idx]);
+        allElements.splice(idx, 1);
+      }
+      npc.spiritRoot = { tier: computedTier, elements: elements };
+    } else {
+      npc.spiritRoot = this.generateSpiritRoot(false);
+    }
 
     // 灵根影响初始修为（天骄灵根高但修为可能低）
     if (isGenius && npc.spiritRoot.tier >= 3 && Math.random() < 0.3) {
@@ -196,12 +215,13 @@ Object.assign(WorldSystem, {
     } else if (npc.spiritRoot.tier <= 0) {
       html += '<div style="color:var(--text-dim);">对方已是杂灵根，无可剥夺。</div>';
     } else {
-      html += '<div style="color:var(--warning);margin:10px 0;">⚠ 剥夺灵根后：</div>';
-      html += '<div style="color:var(--text-dim);font-size:0.85em;">· 你的灵根将提升一阶</div>';
-      html += '<div style="color:var(--text-dim);font-size:0.85em;">· 对方灵根降为杂灵根</div>';
-      html += '<div style="color:var(--crimson-bright);font-size:0.85em;">· 对方将对你恨之入骨，可能伏击报复</div>';
-      html += '<div style="color:var(--crimson-bright);font-size:0.85em;">· 对方所有好友/宗门将敌视你</div>';
-      html += '<button class="btn-combat" style="margin-top:12px;border-color:var(--crimson);color:var(--crimson-bright);" onclick="WorldSystem.doStripRoot(\'' + npcId + '\')">确认剥夺！</button>';
+      html += '<div style="color:var(--warning);margin:10px 0;">⚠ 剥夺灵根将引发死战：</div>';
+      html += '<div style="color:var(--text-dim);font-size:0.85em;">· 点击后将进入战斗，需击败对方</div>';
+      html += '<div style="color:var(--text-dim);font-size:0.85em;">· 胜利后可选择：击杀 / 俘虏 / 释放</div>';
+      html += '<div style="color:var(--gold-bright);font-size:0.85em;">· 击杀：你的灵根提升一阶，对方死亡消失</div>';
+      html += '<div style="color:var(--crimson-bright);font-size:0.85em;">· 击杀后对方好友/父母将追杀你</div>';
+      html += '<div style="color:var(--text-dim);font-size:0.85em;">· 俘虏/释放：对方重伤，灵根变差，修为降低</div>';
+      html += '<button class="btn-combat" style="margin-top:12px;border-color:var(--crimson);color:var(--crimson-bright);" onclick="WorldSystem.doStripRoot(\'' + npcId + '\')">发起剥夺之战！</button>';
     }
     html += '<button class="btn-combat" style="margin-top:8px;" onclick="WorldSystem.talkToNPCPanel(\'' + npcId + '\')">返回</button>';
     html += '</div></div>';
@@ -228,33 +248,343 @@ Object.assign(WorldSystem, {
       return;
     }
 
-    // 执行剥夺
+    // 发起剥夺之战（类似doAttackNPC，但走strip root的胜负节点）
+    UI.closeModal();
+    UI.renderNarrative([
+      {type:"danger",content:"你向" + npc.name + "发起剥夺灵根之战！"},
+      {type:"dialogue",content:"「你要夺我灵根？！休想！」" + npc.name + "怒目圆睁，全力迎战。"},
+    ]);
+
+    var enemy = {
+      name: npc.name + "（" + npc.cultName + "）[死战]",
+      hp: npc.hp, atk: npc.atk, def: npc.def,
+      exp: Math.floor(CULT_LEVELS[npc.cultLevel].maxExp * 0.15),
+      stone: npc.stones, drop: npc.items[0] || null, dropRate: 0.8,
+    };
+    Game.combatState = {
+      enemy: enemy, enemyHp: enemy.hp, enemyMaxHp: enemy.hp,
+      onWin: "_strip_root_win_" + npcId, onLose: "_strip_root_lose_" + npcId,
+      turn: 0, log: [], isNpc: true, npcId: npcId,
+    };
+    UI.showCombat(Game.combatState);
+    Game.combatLog("剥夺灵根之战：" + enemy.name + "！", "danger");
+  },
+
+  // ===== 剥夺灵根战斗胜利 =====
+  stripRootVictory(npcId) {
+    var s = Game.state;
+    var npc = s.npcList.find(function(n) { return n.id === npcId; });
+    if (!npc) { Game.wildVictory(); return; }
+
+    this.ensureNPCSpiritRoot(npc);
+    if (typeof this.initExpand6State === 'function') this.initExpand6State(s);
+
+    // NPC濒死
+    npc.isAlive = true;
+    npc.hp = 1;
+
+    // 劫取物品
+    var itemTexts = [];
+    npc.items.forEach(function(itemId) {
+      if (ITEMS[itemId]) {
+        Game.addItem(itemId, 1);
+        itemTexts.push({type:"reward", content:"\u{1F4E6} \u83B7\u5F97\uFF1A" + ITEMS[itemId].name});
+      }
+    });
+    if (npc.stones > 0) {
+      s.spiritStones += npc.stones;
+      itemTexts.push({type:"reward", content:"\u{1F48E} \u83B7\u5F97" + npc.stones + "\u7075\u77F3"});
+    }
+    npc.items = [];
+    npc.stones = 0;
+
+    var npcRootName = this.getSpiritRootName(npc.spiritRoot.tier);
+
+    UI.hideCombat();
+    Game.combatState = null;
+
+    var texts = [
+      {type:"narration", content:npc.name + "\u88AB\u4F60\u51FB\u8D25\uFF0C\u8DEA\u5012\u5728\u5730\uFF0C\u6DF1\u6DF1\u62B5\u62A5\u5230\u4F60\u7684\u51B7\u6F20\u3002"},
+      {type:"dialogue", content:"\u300C\u4F60\u2026\u2026\u8981\u593A\u6211\u7075\u6839\uFF1F\uFF01\u300D" + npc.name + "\u9762\u5982\u6B7B\u7070\u3002"},
+    ];
+    texts = texts.concat(itemTexts);
+    texts.push({type:"system_msg", content:"\u5BF9\u65B9\u7075\u6839\uFF1A" + npcRootName + " | \u4F60\u53EF\u9009\u62E9\u5BF9\u5176\u7684\u547D\u8FD0\u3002"});
+
+    UI.renderNarrative(texts);
+
+    // 检查地牢
+    var hasDungeon = s.spiritMountain && s.spiritMountain.buildings && s.spiritMountain.buildings["dungeon_cell"];
+
+    var choices = [];
+    choices.push({text:"\u{1F5E1}\uFE0F \u51FB\u6740" + npc.name + "\uFF08\u5265\u593A\u7075\u6839+\u6B7B\u4EA1\uFF09", next:"_strip_root_kill_" + npcId, effect:{}});
+    choices.push({text:"\u{1F6E1}\uFE0F \u91CD\u4F24" + npc.name + "\uFF08\u5265\u593A\u7075\u6839+\u4F4E\u4FEE\u4E3A\uFF09", next:"_strip_root_release_" + npcId, effect:{}});
+    if (hasDungeon) {
+      choices.push({text:"\u26D4\uFE0F \u4FD8\u8650" + npc.name + "\uFF08\u5265\u593A\u7075\u6839+\u56DA\u7981\uFF09", next:"_strip_root_capture_" + npcId, effect:{}});
+    }
+    choices.push({text:"\u653E\u5F03\u5265\u593A\uFF0C\u79BB\u53BB", next:"_wild_return", effect:{}});
+    UI.renderChoices(choices);
+    UI.updateAll();
+  },
+
+  // ===== 剥夺灵根战斗失败 =====
+  stripRootDefeat(npcId) {
+    var s = Game.state;
+    var npc = s.npcList.find(function(n) { return n.id === npcId; });
+    if (!npc) { Game.wildDefeat(); return; }
+
+    UI.hideCombat();
+    Game.combatState = null;
+
+    npc.mood = -1000;
+    npc.hostileToPlayer = true;
+    npc.hp = Math.floor(npc.maxHp * 0.5);
+
+    UI.renderNarrative([
+      {type:"danger", content:"\u4F60\u88AB" + npc.name + "\u51FB\u8D25\u4E86\uFF01"},
+      {type:"dialogue", content:"\u300C\u8774\u8782\u6B32\u52A8\uFF01\u7ADF\u6562\u89C0\u89B0\u6211\u7684\u7075\u6839\uFF01\u300D" + npc.name + "\u6012\u4E0D\u53EF\u9038\u3002"},
+      {type:"narration", content:npc.name + "\u5FD2\u5FD2\u79BB\u53BB\uFF0C\u4F60\u672A\u80FD\u5265\u593A\u5176\u7075\u6839\uFF0C\u53CD\u800C\u7ED3\u4E0B\u4E86\u6DF1\u4EC7\u3002"},
+      {type:"danger", content:npc.name + "\u5BF9\u4F60\u6068\u4E4B\u5165\u9AA8\uFF0C\u5C06\u6765\u5FC5\u4F1A\u62A5\u590D\uFF01"},
+    ]);
+    UI.renderChoices([
+      {text:"\u7EE7\u7EED\u63A2\u7D22", next:"_wild_continue", effect:{}},
+      {text:"\u8FD4\u56DE", next:"_wild_return", effect:{}},
+    ]);
+    UI.updateAll();
+  },
+
+  // ===== 剥夺灵根：击杀（剥夺+死亡+删除NPC+关系网追杀） =====
+  stripRootKill(npcId) {
+    var s = Game.state;
+    var npc = s.npcList.find(function(n) { return n.id === npcId; });
+    if (!npc) return;
+
+    this.ensureNPCSpiritRoot(npc);
+    if (typeof this.initExpand6State === 'function') this.initExpand6State(s);
+
     var oldNPCRoot = this.getSpiritRootName(npc.spiritRoot.tier);
-    npc.spiritRoot = { tier: 0, elements: ['金','木','水','火','土'] };
-    s.spiritRoot.tier++;
-    var newCount = s.spiritRoot.tier === 1 ? 4 : s.spiritRoot.tier === 2 ? 3 : s.spiritRoot.tier === 3 ? 2 : 1;
-    while (s.spiritRoot.elements.length > newCount) {
-      s.spiritRoot.elements.splice(Math.floor(Math.random() * s.spiritRoot.elements.length), 1);
+
+    // 剥夺灵根：玩家灵根提升
+    npc.spiritRoot = { tier: 0, elements: ['\u91D1','\u6728','\u6C34','\u706B','\u571F'] };
+    if (s.spiritRoot.tier < SPIRIT_ROOT_TIERS.length - 1) {
+      s.spiritRoot.tier++;
+      var newCount = s.spiritRoot.tier === 1 ? 4 : s.spiritRoot.tier === 2 ? 3 : s.spiritRoot.tier === 3 ? 2 : 1;
+      while (s.spiritRoot.elements.length > newCount) {
+        s.spiritRoot.elements.splice(Math.floor(Math.random() * s.spiritRoot.elements.length), 1);
+      }
     }
     var newMyRoot = this.getSpiritRootName(s.spiritRoot.tier);
+
+    // 击杀NPC
+    npc.isAlive = false;
+    s.npcKills = (s.npcKills || 0) + 1;
+    if (s.npcKills === 1) Game.giveAchievement("npc_first_kill");
+    if (s.npcKills >= 5) Game.giveAchievement("npc_kill_5");
+
+    // 永久移除（不再生成）
+    if (!s.killedNPCs) s.killedNPCs = [];
+    if (!s.killedNPCs.includes(npcId)) s.killedNPCs.push(npcId);
+
+    // 从npcList中删除
+    var idx = s.npcList.findIndex(function(n) { return n.id === npcId; });
+    if (idx >= 0) s.npcList.splice(idx, 1);
+
+    // 因果值
+    s.karma = (s.karma || 0) + 5;
+    if (npc.isFriend) {
+      s.karma += 5;
+      s.heartDemon = (s.heartDemon || 0) + 1;
+    }
+
+    // 从好友列表移除
+    var fIdx = s.npcFriends.indexOf(npcId);
+    if (fIdx >= 0) s.npcFriends.splice(fIdx, 1);
+
+    // 关系网追杀：好友/父母/道侣成为伏击者
+    var huntCount = 0;
+    if (npc.socialNetwork) {
+      var friends = (npc.socialNetwork.friends || []).concat(npc.socialNetwork.familyMembers || []);
+      if (npc.socialNetwork.spouse) friends.push({name: npc.socialNetwork.spouse.name});
+
+      friends.forEach(function(f) {
+        var targetNPC = s.npcList.find(function(n) { return n.isAlive && n.name === f.name; });
+        if (targetNPC) {
+          targetNPC.mood = -1000;
+          targetNPC.isHostile = true;
+          targetNPC.hostileToPlayer = true;
+          if (!s.ambushers) s.ambushers = [];
+          s.ambushers.push({
+            npcId: targetNPC.id,
+            name: targetNPC.name,
+            reason: "\u5265\u6839\u6740\u4EBA\u4E4B\u4EC7",
+            cultLevel: targetNPC.cultLevel,
+            hp: targetNPC.hp, atk: targetNPC.atk, def: targetNPC.def,
+            ambushChance: 0.35,
+          });
+          huntCount++;
+        }
+      });
+    }
+
+    // 记录剥夺
+    if (!s.strippedNPCs) s.strippedNPCs = [];
+    s.strippedNPCs.push({ id: npcId, name: npc.name, time: s.gameDay || 1, fate: 'killed' });
+
+    UI.renderNarrative([
+      {type:"danger", content:"\u4F60\u5265\u593A\u4E86" + npc.name + "\u7684" + oldNPCRoot + "\uFF0C\u968F\u540E\u4E00\u51FB\u5C06\u5176\u51FB\u6740\uFF01"},
+      {type:"narration", content:npc.name + "\u5DF2\u6B7B\u4EA1\uFF0C\u4ECE\u6B64\u4E16\u95F4\u518D\u65E0\u6B64\u4EBA\u3002"},
+      {type:"reward", content:"\u4F60\u7684\u7075\u6839\u63D0\u5347\u81F3\uFF1A" + newMyRoot},
+      {type:"danger", content:"\u56E0\u679C\u503C+" + (npc.isFriend ? 10 : 5) + (npc.isFriend ? "\uFF08\u6740\u5BB3\u597D\u53CB\uFF01\u5FC3\u9B54\u503C+1\uFF09" : "")},
+    ]);
+
+    if (huntCount > 0) {
+      UI.renderNarrative([
+        {type:"danger", content:"\u26A0\uFE0F " + npc.name + "\u7684" + huntCount + "\u540D\u81F3\u4EA4\u597D\u53CB/\u7236\u6BCD\u5DF2\u5F97\u77E5\u6B64\u4E8B\uFF0C\u8A93\u8981\u8FFD\u6740\u4F60\uFF01"},
+        {type:"system_msg", content:"\u4ED6\u4EEC\u5C06\u5728\u91CE\u5916\u4F0F\u51FB\u4F60\uFF0C\u8BF7\u5C0F\u5FC3\u63A2\u7D22\u3002"},
+      ]);
+    }
+
+    UI.renderChoices([
+      {text:"\u7EE7\u7EED\u63A2\u7D22", next:"_wild_continue", effect:{}},
+      {text:"\u8FD4\u56DE", next:"_wild_return", effect:{}},
+    ]);
+    UI.updateAll();
+  },
+
+  // ===== 剥夺灵根：重伤释放（剥夺+灵根变差+修为降低+敌视） =====
+  stripRootRelease(npcId) {
+    var s = Game.state;
+    var npc = s.npcList.find(function(n) { return n.id === npcId; });
+    if (!npc) return;
+
+    this.ensureNPCSpiritRoot(npc);
+
+    var oldNPCRoot = this.getSpiritRootName(npc.spiritRoot.tier);
+    var oldCultLevel = npc.cultLevel;
+    var oldCultName = npc.cultName;
+
+    // 剥夺灵根：降为杂灵根
+    npc.spiritRoot = { tier: 0, elements: ['\u91D1','\u6728','\u6C34','\u706B','\u571F'] };
+
+    // 玩家灵根提升
+    if (s.spiritRoot.tier < SPIRIT_ROOT_TIERS.length - 1) {
+      s.spiritRoot.tier++;
+      var newCount = s.spiritRoot.tier === 1 ? 4 : s.spiritRoot.tier === 2 ? 3 : s.spiritRoot.tier === 3 ? 2 : 1;
+      while (s.spiritRoot.elements.length > newCount) {
+        s.spiritRoot.elements.splice(Math.floor(Math.random() * s.spiritRoot.elements.length), 1);
+      }
+    }
+    var newMyRoot = this.getSpiritRootName(s.spiritRoot.tier);
+
+    // 重伤：修为降低1-3级
+    var levelDrop = 1 + Math.floor(Math.random() * 3);
+    npc.cultLevel = Math.max(0, npc.cultLevel - levelDrop);
+    npc.cultName = CULT_LEVELS[npc.cultLevel].name;
+    npc.hp = Math.floor((CULT_LEVELS[npc.cultLevel].hpBonus + 100) * 0.3);
+    npc.maxHp = CULT_LEVELS[npc.cultLevel].hpBonus + 100;
+    npc.atk = Math.floor(npc.atk * 0.6);
+    npc.def = Math.floor(npc.def * 0.6);
 
     // NPC敌视
     npc.mood = -1000;
     npc.hostileToPlayer = true;
-    if (!s.strippedNPCs) s.strippedNPCs = [];
-    s.strippedNPCs.push({ id: npcId, name: npc.name, time: s.day || 0 });
+    npc.isHostile = true;
 
-    UI.closeModal();
-    UI.showModal(
-      '<div style="text-align:center;padding:20px;">' +
-      '<div style="font-size:1.4em;color:var(--crimson-bright);margin-bottom:10px;">🔮 灵根剥夺</div>' +
-      '<div style="margin:15px 0;">你强行剥夺了' + npc.name + '的灵根！</div>' +
-      '<div style="color:var(--gold-bright);">对方灵根: ' + oldNPCRoot + ' → 杂灵根</div>' +
-      '<div style="color:var(--jade);">你的灵根: → ' + newMyRoot + '</div>' +
-      '<div style="margin-top:10px;color:var(--crimson-bright);">' + npc.name + '对你恨之入骨！</div>' +
-      '<button class="btn-combat" style="margin-top:15px;" onclick="UI.closeModal()">确定</button>' +
-      '</div>'
-    );
+    // 记录剥夺
+    if (!s.strippedNPCs) s.strippedNPCs = [];
+    s.strippedNPCs.push({ id: npcId, name: npc.name, time: s.gameDay || 1, fate: 'released' });
+
+    // 因果值
+    s.karma = (s.karma || 0) + 3;
+
+    UI.renderNarrative([
+      {type:"danger", content:"\u4F60\u5265\u593A\u4E86" + npc.name + "\u7684" + oldNPCRoot + "\uFF0C\u5C06\u5176\u91CD\u4F24\u540E\u91CA\u653E\u3002"},
+      {type:"narration", content:npc.name + "\u7075\u6839\u88AB\u593A\uFF0C\u4FEE\u4E3A\u4ECE" + oldCultName + "\u8DD1\u843D\u81F3" + npc.cultName + "\uFF0C\u5DF2\u6210\u5E9F\u4EBA\u3002"},
+      {type:"reward", content:"\u4F60\u7684\u7075\u6839\u63D0\u5347\u81F3\uFF1A" + newMyRoot},
+      {type:"dialogue", content:"\u300C\u4F60\u2026\u2026\u5265\u6211\u7075\u6839\u2026\u2026\u6B64\u4EC7\u4E0D\u5171\u6234\u5929\u2026\u2026\u300D" + npc.name + "\u8E94\u8DB4\u7740\u9003\u79BB\u3002"},
+      {type:"danger", content:npc.name + "\u5BF9\u4F60\u6068\u4E4B\u5165\u9AA8\uFF0C\u4FEE\u4E3A\u5927\u964D\u540E\u53EF\u80FD\u4ECD\u4F1A\u62A5\u590D\u3002"},
+      {type:"danger", content:"\u56E0\u679C\u503C+3"},
+    ]);
+
+    UI.renderChoices([
+      {text:"\u7EE7\u7EED\u63A2\u7D22", next:"_wild_continue", effect:{}},
+      {text:"\u8FD4\u56DE", next:"_wild_return", effect:{}},
+    ]);
+    UI.updateAll();
+  },
+
+  // ===== 剥夺灵根：俘虏（剥夺+灵根变差+修为降低+囚禁） =====
+  stripRootCapture(npcId) {
+    var s = Game.state;
+    var npc = s.npcList.find(function(n) { return n.id === npcId; });
+    if (!npc) return;
+
+    this.ensureNPCSpiritRoot(npc);
+    if (typeof this.initExpand6State === 'function') this.initExpand6State(s);
+
+    var oldNPCRoot = this.getSpiritRootName(npc.spiritRoot.tier);
+    var oldCultName = npc.cultName;
+
+    // 剥夺灵根
+    npc.spiritRoot = { tier: 0, elements: ['\u91D1','\u6728','\u6C34','\u706B','\u571F'] };
+
+    // 玩家灵根提升
+    if (s.spiritRoot.tier < SPIRIT_ROOT_TIERS.length - 1) {
+      s.spiritRoot.tier++;
+      var newCount = s.spiritRoot.tier === 1 ? 4 : s.spiritRoot.tier === 2 ? 3 : s.spiritRoot.tier === 3 ? 2 : 1;
+      while (s.spiritRoot.elements.length > newCount) {
+        s.spiritRoot.elements.splice(Math.floor(Math.random() * s.spiritRoot.elements.length), 1);
+      }
+    }
+    var newMyRoot = this.getSpiritRootName(s.spiritRoot.tier);
+
+    // 重伤：修为降低2-4级
+    var levelDrop = 2 + Math.floor(Math.random() * 3);
+    npc.cultLevel = Math.max(0, npc.cultLevel - levelDrop);
+    npc.cultName = CULT_LEVELS[npc.cultLevel].name;
+    npc.hp = Math.floor((CULT_LEVELS[npc.cultLevel].hpBonus + 100) * 0.2);
+    npc.maxHp = CULT_LEVELS[npc.cultLevel].hpBonus + 100;
+    npc.atk = Math.floor(npc.atk * 0.5);
+    npc.def = Math.floor(npc.def * 0.5);
+
+    // 加入俘虏列表
+    s.captives.push({
+      npcId: npcId,
+      name: npc.name,
+      cultLevel: npc.cultLevel,
+      cultName: npc.cultName,
+      capturedDay: s.gameDay || 1,
+    });
+    npc.isCaptive = true;
+    npc.isAlive = false; // 不再出现在野外
+
+    // NPC敌视
+    npc.mood = -1000;
+    npc.hostileToPlayer = true;
+
+    // 记录剥夺
+    if (!s.strippedNPCs) s.strippedNPCs = [];
+    s.strippedNPCs.push({ id: npcId, name: npc.name, time: s.gameDay || 1, fate: 'captured' });
+
+    // 因果值
+    s.karma = (s.karma || 0) + 4;
+
+    UI.renderNarrative([
+      {type:"danger", content:"\u4F60\u5265\u593A\u4E86" + npc.name + "\u7684" + oldNPCRoot + "\uFF0C\u5C06\u5176\u56DA\u7981\u4E8E\u5730\u7262\u4E4B\u4E2D\u3002"},
+      {type:"narration", content:npc.name + "\u7075\u6839\u88AB\u593A\uFF0C\u4FEE\u4E3A\u4ECE" + oldCultName + "\u8DD1\u843D\u81F3" + npc.cultName + "\uFF0C\u5DF2\u88AB\u56DA\u7981\u3002"},
+      {type:"reward", content:"\u4F60\u7684\u7075\u6839\u63D0\u5347\u81F3\uFF1A" + newMyRoot},
+      {type:"dialogue", content:"\u300C\u4F60\u2026\u2026\u5265\u6211\u7075\u6839\u2026\u2026\u53C8\u5C06\u6211\u56DA\u7981\u2026\u2026\u300D" + npc.name + "\u7EDD\u671B\u5730\u88AB\u62BD\u5165\u5730\u7262\u3002"},
+      {type:"danger", content:"\u56E0\u679C\u503C+4"},
+    ]);
+
+    // 标记好友可能来救人
+    if (typeof this.markFriendsForRescue === 'function') {
+      this.markFriendsForRescue(npc, s);
+    }
+
+    UI.renderChoices([
+      {text:"\u7EE7\u7EED\u63A2\u7D22", next:"_wild_continue", effect:{}},
+      {text:"\u8FD4\u56DE", next:"_wild_return", effect:{}},
+    ]);
     UI.updateAll();
   },
 
@@ -480,7 +810,7 @@ Object.assign(WorldSystem, {
         var oldArea = npc.area;
         npc.area = s.location;
         if (!s.summonedNPCs) s.summonedNPCs = [];
-        s.summonedNPCs.push({ id: npc.id, fromArea: oldArea, time: s.day || 0 });
+        s.summonedNPCs.push({ id: npc.id, fromArea: oldArea, time: s.gameDay || 1 });
         UI.closeModal();
         UI.showModal(
           '<div style="text-align:center;padding:20px;">' +
@@ -529,7 +859,7 @@ Object.assign(WorldSystem, {
       desc: eventType.desc.replace('{sect1}', sect1.name).replace('{sect2}', sect2.name),
       sect1: sect1.name,
       sect2: sect2.name,
-      day: s.day || 0,
+      day: s.gameDay || 1,
     };
 
     if (!s.sectAIEvents) s.sectAIEvents = [];
@@ -544,7 +874,7 @@ Object.assign(WorldSystem, {
     if (eventType.type === 'alliance') {
       if (!s.sectRelations) s.sectRelations = {};
       var key = sect1.name + '|' + sect2.name;
-      s.sectRelations[key] = { type: 'alliance', day: s.day || 0 };
+      s.sectRelations[key] = { type: 'alliance', day: s.gameDay || 1 };
     }
   },
 
@@ -610,7 +940,8 @@ Object.assign(WorldSystem, {
 
   showSectMarriageForMember() {
     var s = Game.state;
-    if (!s.ownSectMembers || s.ownSectMembers.length === 0) {
+    var myMembers = (s.ownSectMembers && s.ownSectMembers.length > 0) ? s.ownSectMembers : ((s.ownSect && s.ownSect.members) ? s.ownSect.members : []);
+    if (myMembers.length === 0) {
       UI.toast('宗门暂无成员', 'info');
       return;
     }
@@ -618,7 +949,9 @@ Object.assign(WorldSystem, {
     var html = '<div class="modal-section">' +
       '<div class="modal-section-title">选择联姻成员</div>';
 
-    s.ownSectMembers.forEach(function(npcId) {
+    myMembers.forEach(function(member) {
+      var isObj = typeof member === 'object' && member !== null;
+      var npcId = isObj ? member.npcId : member;
       var npc = s.npcList.find(function(n) { return n.id === npcId && n.isAlive; });
       if (npc && !npc.isChild) {
         html += '<div class="modal-item-row" onclick="WorldSystem.showMarriageTargetSects(\'' + npcId + '\')"><div>';
@@ -642,9 +975,10 @@ Object.assign(WorldSystem, {
       '<div class="modal-section-title">选择联姻目标宗门</div>' +
       '<div style="padding:8px 10px;color:var(--text-dim);">为' + npc.name + '选择联姻宗门</div>';
 
+    var mySectId = s.ownSectId || (s.ownSect && s.ownSect.name) || '';
     if (SECT_RANKINGS) {
       Object.values(SECT_RANKINGS).forEach(function(sect) {
-        if (!s.ownSect || sect.name === SECTS_AND_FAMILIES[s.ownSect]?.name) return;
+        if (!mySectId || sect.name === SECTS_AND_FAMILIES[mySectId]?.name) return;
         var strength = sect.strength || 1.0;
         var myStrength = s.ownSectStrength || 1.0;
         var canForce = myStrength > strength * FORCE_MARRIAGE_MULT;
@@ -670,7 +1004,7 @@ Object.assign(WorldSystem, {
 
     // 找到目标宗门的异性NPC
     var targets = s.npcList.filter(function(n) {
-      return n.isAlive && n.sect === sectName && n.isFemale !== npc.isFemale && !n.isChild && n.mood > -50;
+      return n.isAlive && n.sectName === sectName && n.isFemale !== npc.isFemale && !n.isChild && n.mood > -50;
     });
 
     if (targets.length === 0) {
@@ -687,11 +1021,13 @@ Object.assign(WorldSystem, {
     var canForce = myStrength > targetStrength * FORCE_MARRIAGE_MULT;
 
     targets.forEach(function(target) {
-      var successRate = MARRIAGE_BASE_SUCCESS + (npc.mood || 0) * 0.005 + (myStrength - targetStrength) * 0.2;
+      var targetMood = target.mood || 0;
+      var npcMood = npc.mood || 0;
+      var successRate = 0.5 + (npcMood - 50) * 0.005 + (targetMood - 50) * 0.003 + (myStrength - targetStrength) * 0.2;
       successRate = Math.min(0.95, Math.max(0.1, successRate));
       html += '<div class="modal-item-row" onclick="WorldSystem.doSectMarriage(\'' + npcId + '|' + target.id + '|' + sectName + '\')"><div>';
       html += '<div style="color:var(--gold-bright);">' + target.name + ' <span style="font-size:0.8em;color:var(--text-dim);">' + (target.cultName || '凡人') + '</span></div>';
-      html += '<div class="modal-item-desc">好感: ' + (target.mood || 0) + ' | 成功率: ' + (successRate * 100).toFixed(0) + '%</div>';
+      html += '<div class="modal-item-desc">双方好感综合（己方' + npcMood + '/对方' + targetMood + '）| 成功率: ' + (successRate * 100).toFixed(0) + '%</div>';
       html += '</div></div>';
     });
 
@@ -720,10 +1056,14 @@ Object.assign(WorldSystem, {
     var targetStrength = (targetSect && targetSect.strength) || 1.0;
     var canForce = myStrength > targetStrength * FORCE_MARRIAGE_MULT;
 
-    var successRate = MARRIAGE_BASE_SUCCESS + (npc.mood || 0) * 0.005 + (myStrength - targetStrength) * 0.2;
+    var targetMood = target.mood || 0;
+    var npcMood = npc.mood || 0;
+    var successRate = 0.5 + (npcMood - 50) * 0.005 + (targetMood - 50) * 0.003 + (myStrength - targetStrength) * 0.2;
     successRate = Math.min(0.95, Math.max(0.1, successRate));
 
     var success = canForce || Math.random() < successRate;
+    var mySectId = s.ownSectId || (s.ownSect && s.ownSect.name) || '';
+    var mySectDisplay = s.ownSectId || (s.ownSect && s.ownSect.name) || '你的宗门';
 
     if (success) {
       // 联姻成功
@@ -736,7 +1076,7 @@ Object.assign(WorldSystem, {
 
       // 宗门结盟
       if (!s.sectRelations) s.sectRelations = {};
-      s.sectRelations[s.ownSect + '|' + sectName] = { type: 'marriage', day: s.day || 0 };
+      s.sectRelations[(mySectId || '') + '|' + sectName] = { type: 'marriage', day: s.gameDay || 1 };
       // 实力提升
       s.ownSectStrength = (s.ownSectStrength || 1.0) + 0.08;
       this.changeSectStrength(sectName, 0.08);
@@ -746,7 +1086,7 @@ Object.assign(WorldSystem, {
         '<div style="text-align:center;padding:20px;">' +
         '<div style="font-size:1.3em;color:var(--gold-bright);margin-bottom:10px;">💍 联姻成功！</div>' +
         '<div>' + npc.name + '与' + target.name + '喜结连理！</div>' +
-        '<div style="margin-top:8px;color:var(--jade);">' + s.ownSect + '与' + sectName + '结为同盟！</div>' +
+        '<div style="margin-top:8px;color:var(--jade);">' + mySectDisplay + '与' + sectName + '结为同盟！</div>' +
         '<div style="margin-top:5px;color:var(--text-dim);">双方宗门实力提升！</div>' +
         (canForce ? '<div style="margin-top:5px;color:var(--crimson-bright);">（强制联姻，对方宗门心存不满）</div>' : '') +
         '<button class="btn-combat" style="margin-top:15px;" onclick="UI.closeModal()">确定</button>' +
@@ -770,13 +1110,14 @@ Object.assign(WorldSystem, {
 
   showSectMarriageForSelf() {
     var s = Game.state;
+    var mySectId = s.ownSectId || (s.ownSect && s.ownSect.name) || '';
     var html = '<div class="modal-section">' +
       '<div class="modal-section-title">选择联姻宗门</div>' +
       '<div style="padding:8px 10px;color:var(--text-dim);">你将与目标宗门NPC结为道侣</div>';
 
     if (SECT_RANKINGS) {
       Object.values(SECT_RANKINGS).forEach(function(sect) {
-        if (!s.ownSect || sect.name === SECTS_AND_FAMILIES[s.ownSect]?.name) return;
+        if (!mySectId || sect.name === SECTS_AND_FAMILIES[mySectId]?.name) return;
         var strength = sect.strength || 1.0;
         var myStrength = s.ownSectStrength || 1.0;
         var canForce = myStrength > strength * FORCE_MARRIAGE_MULT;
@@ -796,7 +1137,7 @@ Object.assign(WorldSystem, {
     var s = Game.state;
     var isFemale = s.gender === '女';
     var targets = s.npcList.filter(function(n) {
-      return n.isAlive && n.sect === sectName && n.isFemale !== isFemale && !n.isChild;
+      return n.isAlive && n.sectName === sectName && n.isFemale !== isFemale && !n.isChild;
     });
 
     if (targets.length === 0) {
@@ -813,11 +1154,13 @@ Object.assign(WorldSystem, {
     var canForce = myStrength > targetStrength * FORCE_MARRIAGE_MULT;
 
     targets.forEach(function(target) {
-      var successRate = MARRIAGE_BASE_SUCCESS + (target.mood || 0) * 0.005 + (myStrength - targetStrength) * 0.2;
+      var targetMood = target.mood || 0;
+      var playerMood = 100;
+      var successRate = 0.5 + (playerMood - 50) * 0.005 + (targetMood - 50) * 0.003 + (myStrength - targetStrength) * 0.2;
       successRate = Math.min(0.95, Math.max(0.1, successRate));
       html += '<div class="modal-item-row" onclick="WorldSystem.doSelfMarriage(\'' + target.id + '|' + sectName + '\')"><div>';
       html += '<div style="color:var(--gold-bright);">' + target.name + ' <span style="font-size:0.8em;color:var(--text-dim);">' + (target.cultName || '凡人') + '</span></div>';
-      html += '<div class="modal-item-desc">好感: ' + (target.mood || 0) + ' | 成功率: ' + (successRate * 100).toFixed(0) + '%</div>';
+      html += '<div class="modal-item-desc">双方好感综合（己方' + playerMood + '/对方' + targetMood + '）| 成功率: ' + (successRate * 100).toFixed(0) + '%</div>';
       html += '</div></div>';
     });
 
@@ -843,9 +1186,13 @@ Object.assign(WorldSystem, {
     var targetStrength = (targetSect && targetSect.strength) || 1.0;
     var canForce = myStrength > targetStrength * FORCE_MARRIAGE_MULT;
 
-    var successRate = MARRIAGE_BASE_SUCCESS + (target.mood || 0) * 0.005 + (myStrength - targetStrength) * 0.2;
+    var targetMood = target.mood || 0;
+    var playerMood = 100;
+    var successRate = 0.5 + (playerMood - 50) * 0.005 + (targetMood - 50) * 0.003 + (myStrength - targetStrength) * 0.2;
     successRate = Math.min(0.95, Math.max(0.1, successRate));
     var success = canForce || Math.random() < successRate;
+    var mySectId = s.ownSectId || (s.ownSect && s.ownSect.name) || '';
+    var mySectDisplay = s.ownSectId || (s.ownSect && s.ownSect.name) || '你的宗门';
 
     if (success) {
       // 结为道侣
@@ -855,7 +1202,7 @@ Object.assign(WorldSystem, {
 
       // 宗门结盟
       if (!s.sectRelations) s.sectRelations = {};
-      s.sectRelations[s.ownSect + '|' + sectName] = { type: 'marriage', day: s.day || 0 };
+      s.sectRelations[(mySectId || '') + '|' + sectName] = { type: 'marriage', day: s.gameDay || 1 };
       s.ownSectStrength = (s.ownSectStrength || 1.0) + 0.1;
       this.changeSectStrength(sectName, 0.08);
 
@@ -864,7 +1211,7 @@ Object.assign(WorldSystem, {
         '<div style="text-align:center;padding:20px;">' +
         '<div style="font-size:1.3em;color:var(--gold-bright);margin-bottom:10px;">💍 联姻成功！</div>' +
         '<div>你与' + target.name + '喜结连理，结为道侣！</div>' +
-        '<div style="margin-top:8px;color:var(--jade);">' + s.ownSect + '与' + sectName + '结为同盟！</div>' +
+        '<div style="margin-top:8px;color:var(--jade);">' + mySectDisplay + '与' + sectName + '结为同盟！</div>' +
         '<div style="margin-top:5px;color:var(--text-dim);">双方宗门实力提升！</div>' +
         (canForce ? '<div style="margin-top:5px;color:var(--crimson-bright);">（强制联姻，对方宗门心存不满）</div>' : '') +
         '<button class="btn-combat" style="margin-top:15px;" onclick="UI.closeModal()">确定</button>' +
