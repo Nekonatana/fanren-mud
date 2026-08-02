@@ -232,7 +232,7 @@ Object.assign(WorldSystem, {
       name: npc.name,
       cultLevel: npc.cultLevel,
       isFemale: npc.isFemale,
-      capturedDay: s.gameDay || 1,
+      capturedDays: 0,
       mood: npc.mood,
       loyalty: (npc.loyalty !== undefined ? npc.loyalty : 100),
       recruitProgress: 0,
@@ -308,6 +308,7 @@ Object.assign(WorldSystem, {
     // 检查防御阵法等级
     const defenseLevel = s.spiritMountain.buildings && s.spiritMountain.buildings["defense_array"] || 0;
     const rescueChance = CAPTURE_RESCUE_CHANCE * (1 - defenseLevel * 0.03); // 防御阵法降低概率
+    rescueChance = Math.max(0, rescueChance);
 
     if (Math.random() < rescueChance) {
       // 随机选一个俘虏
@@ -483,8 +484,8 @@ Object.assign(WorldSystem, {
       ]);
 
       // 如果有自己的宗门，可加入
-      if (s.ownSect && typeof this.addNPCToOwnSect === 'function') {
-        this.addNPCToOwnSect(npc.id);
+      if (s.ownSect && typeof this.inviteNPCToSect === 'function') {
+        this.inviteNPCToSect(npc.id);
       }
     } else {
       // 招降失败
@@ -683,7 +684,7 @@ Object.assign(WorldSystem, {
             html += '<button class="btn-combat" style="margin-top:4px;font-size:0.7em;padding:3px 8px;" onclick="UI.closeModal();WorldSystem.travelTo(\'' + aq.locKey + '\')">前往' + locName + '</button>';
           }
         } else if (quest.type === "submit_material" && quest.requiredItem) {
-          const has = (s.items && s.items[quest.requiredItem]) || 0;
+          const has = (s.inventory.find(i => i.id === quest.requiredItem) || {}).count || 0;
           const itemName = ITEMS[quest.requiredItem] ? ITEMS[quest.requiredItem].name : quest.requiredItem;
           html += '<div class="modal-item-stats">材料：' + itemName + ' (' + has + '/' + quest.requiredCount + ')</div>';
           html += '<div class="modal-item-stats">交付地点：' + locName + '</div>';
