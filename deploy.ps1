@@ -67,7 +67,7 @@ $repoBody = @{
     name = $RepoName
     description = $Description
     private = $false
-    auto_init = $false
+    auto_init = $true  # Must be true to allow Contents API to work
 } | ConvertTo-Json
 
 $repoCreated = $false
@@ -148,45 +148,121 @@ Get-ChildItem $DeployDir -Recurse -File | ForEach-Object {
 }
 Write-Host "  $($files.Count) files to upload" -ForegroundColor Green
 
-# Upload via GitHub Contents API
+# Upload via Git Trees API (more reliable for batch upload)
 $success = 0
 $failed = 0
-$apiBase = "https://api.github.com/repos/$owner/$RepoName/contents"
 
-foreach ($file in $files) {
-    $encodedPath = [Uri]::EscapeDataString($file.Path)
-    $apiUrl = "$apiBase/$encodedPath"
-
+# First, get the default branch's latest commit SHA for the base tree
+Write-Host "  Getting base branch info..." -ForegroundColor Gray
+try {
+    $branchResp = Invoke-RestMethod -Uri "https://api.github.com/repos/$owner/$RepoName/git/ref/heads/main" -Headers $headers -Method Get
+    $baseTreeSha = $branchResp.object.sha
+    Write-Host "  Base commit SHA: $baseTreeSha" -ForegroundColor Gray
+} catch {
+    # Try master branch
     try {
-        $bytes = [IO.File]::ReadAllBytes($file.FullPath)
-        $b64 = [Convert]::ToBase64String($bytes)
-        $body = @{
-            message = "upload: $($file.Path)"
-            content = $b64
-        } | ConvertTo-Json
-
-        # Check if file exists (get sha for update)
-        $sha = $null
-        try {
-            $existResp = Invoke-RestMethod -Uri $apiUrl -Headers $headers -Method Get
-            $sha = $existResp.sha
-            $body = @{
-                message = "update: $($file.Path)"
-                content = $b64
-                sha = $sha
-            } | ConvertTo-Json
-        } catch {}
-
-        Invoke-RestMethod -Uri $apiUrl -Headers $headers -Method Put -Body $body -ContentType 'application/json' | Out-Null
-        $success++
-        Write-Host ("  [OK] {0}" -f $file.Path) -ForegroundColor Green
+        $branchResp = Invoke-RestMethod -Uri "https://api.github.com/repos/$owner/$RepoName/git/ref/heads/master" -Headers $headers -Method Get
+        $baseTreeSha = $branchResp.object.sha
+        Write-Host "  Base commit SHA (master): $baseTreeSha" -ForegroundColor Gray
     } catch {
-        $failed++
-        Write-Host ("  [FAIL] {0}: {1}" -f $file.Path, $_.Exception.Message) -ForegroundColor Red
+        Write-Host "[ERROR] Cannot find main/master branch" -ForegroundColor Red
+        Write-Host "  The repo may be empty. Please create it with auto_init = true first." -ForegroundColor Yellow
+        exit 1
     }
+}
 
-    # GitHub API rate limit: avoid hammering
-    Start-Sleep -Milliseconds 300
+# Collect all files and create blobs
+$blobResults = @()
+foreach ($file in $files) {
+    $bytes = [IO.File]::ReadAllBytes($file.FullPath)
+    $b64 = [Convert]::ToBase64String($bytes)
+    
+    # Create a blob for each file
+    try {
+        $blobBody = @{
+            content = $b64
+            encoding = "base64"
+        } | ConvertTo-Json
+        $blobResp = Invoke-RestMethod -Uri "https://api.github.com/repos/$owner/$RepoName/git/blobs" -Headers $headers -Method Post -Body $blobBody -ContentType 'application/json'
+        $blobResults += [PSCustomObject]@{ 
+            Path = $file.Path 
+            BlobSha = $blobResp.sha 
+        }
+        Start-Sleep -Milliseconds 100
+    } catch {
+        Write-Host ("  [WARN] Cannot create blob for {0}: {1}" -f $file.Path, $_.Exception.Message) -ForegroundColor Yellow
+    }
+}
+
+Write-Host "  Created $($blobResults.Count) file blobs" -ForegroundColor Green
+
+# Create a new tree with all files
+$treeItems = @()
+foreach ($blob in $blobResults) {
+    $treeItems += @{
+        path = $blob.Path.Replace('\', '/')
+        mode = "100644"
+        type = "blob"
+        sha = $blob.BlobSha
+    }
+}
+
+$treeBody = @{
+    base_tree = $branchResp.object.sha
+    tree = $treeItems
+} | ConvertTo-Json -Depth 10
+
+try {
+    $treeResp = Invoke-RestMethod -Uri "https://api.github.com/repos/$owner/$RepoName/git/trees" -Headers $headers -Method Post -Body $treeBody -ContentType 'application/json'
+    $newTreeSha = $treeResp.sha
+    Write-Host "  Created tree: $newTreeSha" -ForegroundColor Green
+} catch {
+    Write-Host "[ERROR] Cannot create tree: $($_.Exception.Message)" -ForegroundColor Red
+    exit 1
+}
+
+# Create a commit with the new tree
+$commitBody = @{
+    message = "Upload: $($blobResults.Count) files to $RepoName"
+    tree = $newTreeSha
+    parents = @($branchResp.object.sha)
+} | ConvertTo-Json
+
+try {
+    $commitResp = Invoke-RestMethod -Uri "https://api.github.com/repos/$owner/$RepoName/git/commits" -Headers $headers -Method Post -Body $commitBody -ContentType 'application/json'
+    $newCommitSha = $commitResp.sha
+    Write-Host "  Created commit: $newCommitSha" -ForegroundColor Green
+} catch {
+    Write-Host "[ERROR] Cannot create commit: $($_.Exception.Message)" -ForegroundColor Red
+    exit 1
+}
+
+# Update the branch reference to point to the new commit
+$updateBody = @{
+    ref = "refs/heads/main"
+    sha = $newCommitSha
+} | ConvertTo-Json
+
+try {
+    Invoke-RestMethod -Uri "https://api.github.com/repos/$owner/$RepoName/git/refs/heads/main" -Headers $headers -Method Patch -Body $updateBody -ContentType 'application/json' | Out-Null
+    Write-Host "  [OK] Branch updated!" -ForegroundColor Green
+    $success = $blobResults.Count
+    $failed = $files.Count - $success
+} catch {
+    # Try updating master branch
+    $updateBodyMaster = @{
+        ref = "refs/heads/master"
+        sha = $newCommitSha
+    } | ConvertTo-Json
+    try {
+        Invoke-RestMethod -Uri "https://api.github.com/repos/$owner/$RepoName/git/refs/heads/master" -Headers $headers -Method Patch -Body $updateBodyMaster -ContentType 'application/json' | Out-Null
+        Write-Host "  [OK] Branch updated (master)!" -ForegroundColor Green
+        $success = $blobResults.Count
+        $failed = $files.Count - $success
+    } catch {
+        Write-Host "[ERROR] Cannot update branch: $($_.Exception.Message)" -ForegroundColor Red
+        exit 1
+    }
 }
 
 Write-Host ""
