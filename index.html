@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-app-version="v14.20260731">
+<html lang="zh-CN" data-app-version="v14.20260731.pwa7">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -114,6 +114,7 @@
 <button class="btn-menu" onclick="UI.showPanel('guworm')">仙蛊</button>
 <button class="btn-menu" onclick="UI.showPanel('aperture')">空窍</button>
 <button class="btn-menu" onclick="UI.showPanel('companion')">道侣</button>
+<button class="btn-menu" onclick="UI.showPanel('party')">🚶队伍</button>
 <button class="btn-menu" onclick="UI.showPanel('npctracker')">👥追踪</button>
 <button class="btn-menu" onclick="UI.showPanel('technique')">仙道杀招</button>
 <button class="btn-menu" onclick="UI.showPanel('map')">天下地图</button>
@@ -131,6 +132,9 @@
 <button class="btn-menu" onclick="UI.showPanel('home')">🏠家园</button>
 <button class="btn-menu" onclick="UI.showPanel('inn')">💤客栈</button>
 <button class="btn-menu" onclick="Game.gotoNode('_expand8_panel')">🔮灵根·同行</button>
+<button class="btn-menu" onclick="UI.showPanel('anchors')">⚖️锚定值</button>
+<button class="btn-menu" onclick="UI.showPanel('debts')">💸修行债</button>
+<button class="btn-menu" onclick="UI.showPanel('social')">🎭社会</button>
 </div>
 </div>
 
@@ -173,6 +177,7 @@
 <button class="btn-bottom" onclick="UI.showPanel('equipment')">装备</button>
 <button class="btn-bottom" onclick="UI.showPanel('guworm')">仙蛊</button>
 <button class="btn-bottom" onclick="UI.showPanel('companion')">道侣</button>
+<button class="btn-bottom" onclick="UI.showPanel('party')">队伍</button>
 <button class="btn-bottom" onclick="UI.showPanel('npctracker')">追踪</button>
 <button class="btn-bottom" onclick="UI.showPanel('farm')">灵田</button>
 <button class="btn-bottom" onclick="UI.showPanel('wilderness')">探索</button>
@@ -210,7 +215,11 @@
 <h2 id="ending-title"></h2>
 <p id="ending-text"></p>
 <div id="ending-achievements"></div>
-<button class="btn-title" onclick="location.reload()">再入轮回</button>
+<div id="ending-buttons" class="title-buttons">
+<button class="btn-title" onclick="Game.continueAfterEnding()">继续游玩</button>
+<button class="btn-title btn-title-secondary" onclick="location.reload()">再入轮回</button>
+</div>
+<div class="title-hint">选择「继续游玩」可在当前存档基础上继续探索修仙界；选择「再入轮回」将开启全新游戏。</div>
 </div>
 </div>
 
@@ -218,28 +227,30 @@
 <div id="toast-container"></div>
 </div>
 
-<script src="js/data.js"></script>
-<script src="js/worlddata.js"></script>
-<script src="js/story.js"></script>
-<script src="js/engine.js"></script>
-<script src="js/worldengine.js"></script>
-<script src="js/worldexpand_data.js"></script>
-<script src="js/worldexpand.js"></script>
-<script src="js/worldexpand2_data.js"></script>
-<script src="js/worldexpand2.js"></script>
-<script src="js/worldexpand3.js"></script>
-<script src="js/worldexpand4_data.js"></script>
-<script src="js/worldexpand4.js"></script>
-<script src="js/worldexpand5_data.js"></script>
-<script src="js/worldexpand5.js"></script>
-<script src="js/worldexpand6_data.js"></script>
-<script src="js/worldexpand6.js"></script>
-<script src="js/worldexpand7_data.js"></script>
-<script src="js/worldexpand7.js"></script>
-<script src="js/worldexpand8_data.js"></script>
-<script src="js/worldexpand8.js"></script>
-<script src="js/native-bridge.js"></script>
-<script src="js/main.js"></script>
+<script src="js/data.js?v=pwa7"></script>
+<script src="js/worlddata.js?v=pwa7"></script>
+<script src="js/story.js?v=pwa7"></script>
+<script src="js/worldmodel.js?v=pwa7"></script>
+<script src="js/social.js?v=pwa7"></script>
+<script src="js/engine.js?v=pwa7"></script>
+<script src="js/worldengine.js?v=pwa7"></script>
+<script src="js/worldexpand_data.js?v=pwa7"></script>
+<script src="js/worldexpand.js?v=pwa7"></script>
+<script src="js/worldexpand2_data.js?v=pwa7"></script>
+<script src="js/worldexpand2.js?v=pwa7"></script>
+<script src="js/worldexpand3.js?v=pwa7"></script>
+<script src="js/worldexpand4_data.js?v=pwa7"></script>
+<script src="js/worldexpand4.js?v=pwa7"></script>
+<script src="js/worldexpand5_data.js?v=pwa7"></script>
+<script src="js/worldexpand5.js?v=pwa7"></script>
+<script src="js/worldexpand6_data.js?v=pwa7"></script>
+<script src="js/worldexpand6.js?v=pwa7"></script>
+<script src="js/worldexpand7_data.js?v=pwa7"></script>
+<script src="js/worldexpand7.js?v=pwa7"></script>
+<script src="js/worldexpand8_data.js?v=pwa7"></script>
+<script src="js/worldexpand8.js?v=pwa7"></script>
+<script src="js/native-bridge.js?v=pwa7"></script>
+<script src="js/main.js?v=pwa7"></script>
 <script>
 /* ===== PWA 启动参数处理 (manifest shortcuts) ===== */
 (function handleLaunchParams() {
@@ -275,7 +286,7 @@ var PWA_INSTALL_EVENT = null;
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {
-    navigator.serviceWorker.register('sw.js')
+    navigator.serviceWorker.register('sw.js?v=pwa7')
       .then(function(reg) {
         SW_REG = reg;
         // 检查更新
@@ -452,9 +463,11 @@ function showPWAInstallPrompt() {
     });
   };
 
+  // 悬停效果
   btn.onmouseenter = function() { btn.style.borderColor = 'var(--gold-bright,#f0c75e)'; btn.style.boxShadow = '0 4px 20px rgba(240,199,94,0.3)'; };
   btn.onmouseleave = function() { btn.style.borderColor = 'var(--gold,#d4a857)'; btn.style.boxShadow = '0 4px 16px rgba(0,0,0,0.5)'; };
 
+  // 长按右键关闭
   btn.oncontextmenu = function(e) {
     e.preventDefault();
     window.localStorage.setItem('pwa_install_dismissed', '1');
@@ -463,6 +476,7 @@ function showPWAInstallPrompt() {
 
   document.body.appendChild(btn);
 
+  // 15秒后自动消失
   setTimeout(function() {
     if (document.getElementById('pwa-install-prompt')) {
       btn.remove();
