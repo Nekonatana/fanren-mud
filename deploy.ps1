@@ -62,80 +62,49 @@ try {
 
 # Create / verify repo
 Write-Host ""
-Write-Host "Creating/verifying repo: $RepoName..." -ForegroundColor Yellow
-$repoBody = @{
-    name = $RepoName
-    description = $Description
-    private = $false
-    auto_init = $true  # Must be true to allow Contents API to work
-} | ConvertTo-Json
+Write-Host "Checking repository: $RepoName..." -ForegroundColor Yellow
 
-$repoCreated = $false
+$repoUrl = ""
+$pagesUrl = ""
+$repoExists = $false
+
+# First, check if repo already exists
 try {
-    $repoResp = Invoke-RestMethod -Uri 'https://api.github.com/user/repos' -Headers $headers -Method Post -Body $repoBody -ContentType 'application/json'
-    $repoUrl = $repoResp.html_url
+    $checkResp = Invoke-RestMethod -Uri "https://api.github.com/repos/$owner/$RepoName" -Headers $headers -Method Get
+    $repoUrl = $checkResp.html_url
     $pagesUrl = "https://$owner.github.io/$RepoName/"
-    Write-Host "  [OK] Repo created: $repoUrl" -ForegroundColor Green
-    $repoCreated = $true
+    $repoExists = $true
+    Write-Host "  [OK] Repo found: $repoUrl" -ForegroundColor Green
+    Write-Host "  [INFO] Will update existing repository" -ForegroundColor Cyan
 } catch {
-    # GitHub API 422 error response is JSON with detailed message
-    $errMsg = $_.Exception.Message
-    $errStatus = $_.Exception.Response.StatusCode.value__
-    
-    # Try to parse the error response body for more details
-    $errDetail = ""
+    # Repo doesn't exist, try to create it
+    Write-Host "  Repo not found, creating..." -ForegroundColor Yellow
+    $repoBody = @{
+        name = $RepoName
+        description = $Description
+        private = $false
+        auto_init = $true
+    } | ConvertTo-Json
+
     try {
-        $stream = $_.Exception.Response.GetResponseStream()
-        $reader = New-Object System.IO.StreamReader($stream)
-        $errBody = $reader.ReadToEnd()
-        if ($errBody) {
-            $errJson = $errBody | ConvertFrom-Json
-            if ($errJson.errors) {
-                $errDetail = $errJson.errors -join "; "
-            } elseif ($errJson.message) {
-                $errDetail = $errJson.message
-            }
-        }
-    } catch {}
-    
-    Write-Host "  GitHub API Error ($errStatus): $errDetail" -ForegroundColor Red
-    Write-Host "  Details: $errMsg" -ForegroundColor Gray
-    
-    # Check if repo name already exists (422 status with name conflict)
-    $nameConflict = $false
-    if ($errStatus -eq 422 -or $errMsg -match 'already exists' -or $errDetail -match 'name' -or $errDetail -match 'already') {
-        # Verify by trying to access the repo - if it exists, we can update it
-        try {
-            $checkResp = Invoke-RestMethod -Uri "https://api.github.com/repos/$owner/$RepoName" -Headers $headers -Method Get
-            Write-Host "  [INFO] Repo '$RepoName' already exists on your account" -ForegroundColor Yellow
-            Write-Host "  [INFO] Will update existing repository instead" -ForegroundColor Yellow
-            $repoUrl = $checkResp.html_url
-            $pagesUrl = "https://$owner.github.io/$RepoName/"
-            $nameConflict = $true
-        } catch {
-            # Repo doesn't exist but creation failed for another reason
-            Write-Host ""
-            Write-Host "  [ERROR] Cannot create repo '$RepoName'" -ForegroundColor Red
-            Write-Host "  The repository name might be:" -ForegroundColor Red
-            Write-Host "    - Already taken by another user" -ForegroundColor Yellow
-            Write-Host "    - Contains invalid characters" -ForegroundColor Yellow
-            Write-Host "    - Reserved by GitHub" -ForegroundColor Yellow
-            Write-Host ""
-            Write-Host "  Suggestions:" -ForegroundColor Cyan
-            Write-Host "    1. Use a unique name like: 'fanren-mud-v14-$owner'" -ForegroundColor White
-            Write-Host "    2. Or: 'fanren-xiuzhuan-mud'" -ForegroundColor White
-            Write-Host ""
-            Write-Host "  To retry with a new name, run:" -ForegroundColor Cyan
-            Write-Host "    .\deploy.bat -RepoName 'your-unique-name'" -ForegroundColor White
-            Write-Host ""
-            exit 1
-        }
-    }
-    
-    if (-not $nameConflict) {
-        Write-Host "[ERROR] Failed to create repo: $errMsg" -ForegroundColor Red
+        $repoResp = Invoke-RestMethod -Uri 'https://api.github.com/user/repos' -Headers $headers -Method Post -Body $repoBody -ContentType 'application/json'
+        $repoUrl = $repoResp.html_url
+        $pagesUrl = "https://$owner.github.io/$RepoName/"
+        $repoExists = $true
+        Write-Host "  [OK] Repo created: $repoUrl" -ForegroundColor Green
+    } catch {
+        $errMsg = $_.Exception.Message
+        Write-Host "  [ERROR] Failed to create repo: $errMsg" -ForegroundColor Red
+        Write-Host ""
+        Write-Host "  Please check if the repository name is already taken." -ForegroundColor Yellow
+        Write-Host "  If it exists, verify the owner is '$owner'" -ForegroundColor Yellow
         exit 1
     }
+}
+
+if (-not $repoExists) {
+    Write-Host "[ERROR] Repository '$RepoName' not found and could not be created." -ForegroundColor Red
+    exit 1
 }
 
 # Collect files to upload
