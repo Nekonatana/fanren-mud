@@ -6,7 +6,69 @@ const Game = {
   combatState: null,
   gameMonth: 1, // 游戏内月份
   farmSlots: [], // 灵田种植槽位
-  
+
+  // ===== 修复：旧版存档/损坏字段补全（统一迁移函数） =====
+  _migrateState(s) {
+    if (!s) return;
+    // 数组/对象类字段，缺省时给默认值，避免 forEach 抛错
+    if (!Array.isArray(s.guWorms)) s.guWorms = [];
+    if (!s.guWormLevels || typeof s.guWormLevels !== 'object') s.guWormLevels = {};
+    if (!Array.isArray(s.apertures)) s.apertures = [];
+    if (!Array.isArray(s.companions)) s.companions = [];
+    if (!s.companionData || typeof s.companionData !== 'object') s.companionData = {};
+    if (!Array.isArray(s.spouses)) s.spouses = [];
+    if (!Array.isArray(s.party)) s.party = [];
+    if (!Array.isArray(s.storyQuests)) s.storyQuests = [];
+    if (!Array.isArray(s.npcFriends)) s.npcFriends = [];
+    if (!Array.isArray(s.killedNPCs)) s.killedNPCs = [];
+    if (!Array.isArray(s.ambushers)) s.ambushers = [];
+    if (!Array.isArray(s.techniques)) s.techniques = [];
+    if (!Array.isArray(s.achievements)) s.achievements = [];
+    if (!Array.isArray(s.inventory)) s.inventory = [];
+    if (!s.flags || typeof s.flags !== 'object') s.flags = {};
+    if (!s.equipment || typeof s.equipment !== 'object') s.equipment = { weapon: null, armor: null, accessory: null, artifact: null };
+    if (!s.farmSeeds || typeof s.farmSeeds !== 'object') s.farmSeeds = {};
+    if (!Array.isArray(s.pmainCompleted)) s.pmainCompleted = [];
+    if (typeof s.pmainProgress !== 'number') s.pmainProgress = 0;
+    if (typeof s.heartDemon !== 'number') s.heartDemon = 0;
+    if (typeof s.karma !== 'number') s.karma = 0;
+    if (typeof s.gameDay !== 'number') s.gameDay = 1;
+    if (typeof s.gameMonth !== 'number') s.gameMonth = 1;
+    // 数值边界：hp/mp 不能超过 max
+    if (typeof s.maxHp !== 'number' || s.maxHp <= 0) s.maxHp = 100;
+    if (typeof s.maxMp !== 'number' || s.maxMp <= 0) s.maxMp = 50;
+    if (typeof s.hp !== 'number' || isNaN(s.hp)) s.hp = s.maxHp;
+    if (typeof s.mp !== 'number' || isNaN(s.mp)) s.mp = s.maxMp;
+    s.hp = Math.max(0, Math.min(s.hp, s.maxHp));
+    s.mp = Math.max(0, Math.min(s.mp, s.maxMp));
+    if (typeof s.atk !== 'number' || isNaN(s.atk)) s.atk = 10;
+    if (typeof s.def !== 'number' || isNaN(s.def)) s.def = 5;
+    if (typeof s.spd !== 'number' || isNaN(s.spd)) s.spd = 10;
+    if (typeof s.spiritStones !== 'number' || isNaN(s.spiritStones)) s.spiritStones = 0;
+    if (typeof s.exp !== 'number' || isNaN(s.exp)) s.exp = 0;
+    if (typeof s.cultLevel !== 'number' || s.cultLevel < 0) s.cultLevel = 0;
+    if (s.cultLevel >= CULT_LEVELS.length) s.cultLevel = CULT_LEVELS.length - 1;
+    // companionData 中每个条目补 level/exp/affinity 字段（防 NaN）
+    for (const k of Object.keys(s.companionData)) {
+      const c = s.companionData[k] || {};
+      if (typeof c.level !== 'number' || isNaN(c.level)) c.level = 1;
+      if (typeof c.exp !== 'number' || isNaN(c.exp)) c.exp = 0;
+      if (typeof c.affinity !== 'number' || isNaN(c.affinity)) c.affinity = 0;
+      s.companionData[k] = c;
+    }
+    // guWormLevels 同理
+    for (const k of Object.keys(s.guWormLevels)) {
+      const g = s.guWormLevels[k] || {};
+      if (typeof g.level !== 'number' || isNaN(g.level)) g.level = 1;
+      if (typeof g.exp !== 'number' || isNaN(g.exp)) g.exp = 0;
+      s.guWormLevels[k] = g;
+    }
+    // ===== 世界模型迁移：初始化锚定值/债务/世界真相/NPC记忆 =====
+    if (typeof initWorldModel === 'function') {
+      initWorldModel(s);
+    }
+  },
+
   // ===== 初始化新游戏 =====
   startNewGame() {
     this.state = {
@@ -28,6 +90,12 @@ const Game = {
       apertures: [],
       companions: [],
       companionData: {}, // {compId: {level, exp, affinity}}
+      spouses: [], // 世界NPC道侣ID列表
+      party: [], // 队伍成员列表（npcId 或 'comp_'+compId）
+      storyQuests: [],
+      npcFriends: [],
+      killedNPCs: [],
+      ambushers: [],
       techniques: [],
       achievements: [],
       flags: {},
@@ -43,11 +111,23 @@ const Game = {
       wildBattlesWon: 0,
       auctionWins: 0,
       alchemyCount: 0,
+      // ===== 世界模型字段（由 initWorldModel 填充）=====
+      // anchors / cultivationDebts / worldFacts / publicNarrative /
+      // npcCognition / evidenceChain / suspicionLog / secretPressure /
+      // cultivationPath / pathHistory / pathMilestones
     };
-    
+    // 初始化世界模型（锚定值/债务/真相/修炼道路）
+    if (typeof initWorldModel === 'function') {
+      initWorldModel(this.state);
+    }
+
     this.gameMonth = 1;
     this.farmSlots = [null, null, null, null]; // 4个种植槽位
-    
+    // 把 gameMonth / gameDay 同步存入 state，进入存档
+    this.state.gameDay = 1;
+    this.state.gameMonth = 1;
+    this.state.farmSeeds = [null, null, null, null];
+
     // 自动加入七玄门（永久主线初始状态）
     this.state.flags['joined_seven_profound'] = true;
     this.state.pmainProgress = 0;
@@ -68,8 +148,13 @@ const Game = {
     // 优先尝试自动存档
     const auto = this.loadSlotData('__auto__');
     if (auto) {
+      if (!auto || !auto.state) { UI.toast("存档损坏，请开始新游戏。", "danger"); return; }
       this.state = auto.state;
+      this._migrateState(this.state);
       this.currentNode = auto.state.currentNode || "start";
+      // 还原 Game 对象上的缓存字段
+      this.gameMonth = this.state.gameMonth || 1;
+      this.farmSlots = this.state.farmSeeds || [null, null, null, null];
       // 初始化扩展8状态
       if (typeof WorldSystem !== 'undefined' && typeof WorldSystem.initExpand8State === 'function') {
         WorldSystem.initExpand8State(this.state);
@@ -84,7 +169,12 @@ const Game = {
     const oldSave = localStorage.getItem('fanren_mud_save');
     if (!oldSave) { UI.toast("无存档可加载，请开始新游戏。", "danger"); return; }
     try {
-      this.state = JSON.parse(oldSave);
+      const parsed = JSON.parse(oldSave);
+      if (!parsed) throw new Error('empty');
+      this.state = parsed;
+      this._migrateState(this.state);
+      this.gameMonth = this.state.gameMonth || 1;
+      this.farmSlots = this.state.farmSeeds || [null, null, null, null];
       // 初始化扩展8状态
       if (typeof WorldSystem !== 'undefined' && typeof WorldSystem.initExpand8State === 'function') {
         WorldSystem.initExpand8State(this.state);
@@ -124,6 +214,9 @@ const Game = {
   // ===== 保存到指定槽位 =====
   saveToSlot(slotId, slotName) {
     if (!this.state) return;
+    // 保存前同步 Game 对象上的缓存字段到 state，确保存档完整
+    this.state.gameMonth = this.gameMonth;
+    this.state.farmSeeds = this.farmSlots || [null, null, null, null];
     const saveData = {
       state: this.state,
       slotName: slotName || ('存档槽' + slotId),
@@ -146,8 +239,13 @@ const Game = {
     const data = this.loadSlotData(slotId);
     if (!data) { UI.toast("该槽位无存档。", "danger"); return; }
     try {
+      if (!data || !data.state) throw new Error('no state');
       this.state = data.state;
+      this._migrateState(this.state);
       this.currentNode = data.state.currentNode || "start";
+      // 还原 Game 对象上的缓存字段
+      this.gameMonth = this.state.gameMonth || 1;
+      this.farmSlots = this.state.farmSeeds || [null, null, null, null];
       // 初始化扩展8状态
       if (typeof WorldSystem !== 'undefined' && typeof WorldSystem.initExpand8State === 'function') {
         WorldSystem.initExpand8State(this.state);
@@ -205,7 +303,8 @@ const Game = {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    const cultName = CULT_LEVELS[data.state.cultLevel].name;
+    const cultLevel = (data.state && typeof data.state.cultLevel === 'number') ? data.state.cultLevel : 0;
+    const cultName = CULT_LEVELS[Math.min(cultLevel, CULT_LEVELS.length - 1)].name;
     const dateStr = new Date().toISOString().slice(0,10);
     a.download = '凡人修仙传_存档_' + cultName + '_' + dateStr + '.json';
     document.body.appendChild(a);
@@ -323,6 +422,7 @@ const Game = {
   
   // ===== 跳转到剧情节点 =====
   gotoNode(nodeId) {
+    if (!nodeId) { console.error("gotoNode: nodeId is null/undefined"); return; }
     // 处理特殊节点
     if (nodeId === "_wild_victory") { this.wildVictory(); return; }
     if (nodeId === "_wild_defeat") { this.wildDefeat(); return; }
@@ -446,7 +546,12 @@ const Game = {
     // 自立宗门管理
     if (nodeId === "_own_sect_manage") { WorldSystem.showOwnSectManage(); return; }
     if (nodeId === "_own_sect_build") { WorldSystem.showOwnSectManage(); return; }
-    // 扩展8路由
+    // 扩展8路由：剥夺灵根（战斗胜负/击杀/俘虏/释放 需先于通用_strip_root_匹配）
+    if (nodeId.startsWith("_strip_root_win_")) { WorldSystem.stripRootVictory(nodeId.replace("_strip_root_win_", "")); return; }
+    if (nodeId.startsWith("_strip_root_lose_")) { WorldSystem.stripRootDefeat(nodeId.replace("_strip_root_lose_", "")); return; }
+    if (nodeId.startsWith("_strip_root_kill_")) { WorldSystem.stripRootKill(nodeId.replace("_strip_root_kill_", "")); return; }
+    if (nodeId.startsWith("_strip_root_capture_")) { WorldSystem.stripRootCapture(nodeId.replace("_strip_root_capture_", "")); return; }
+    if (nodeId.startsWith("_strip_root_release_")) { WorldSystem.stripRootRelease(nodeId.replace("_strip_root_release_", "")); return; }
     if (nodeId.startsWith("_strip_root_")) { WorldSystem.showStripRootPanel(nodeId.replace("_strip_root_", "")); return; }
     if (nodeId.startsWith("_travel_with_")) { WorldSystem.setTravelCompanion(nodeId.replace("_travel_with_", "")); return; }
     if (nodeId === "_expand8_panel") { WorldSystem.showExpand8Panel(); return; }
@@ -457,6 +562,8 @@ const Game = {
     if (nodeId === "_use_butian") { WorldSystem.useButianPill(); return; }
     // 城镇节点
     if (nodeId.startsWith("_town_enter_")) { WorldSystem.enterTown(nodeId.replace("_town_enter_", "")); return; }
+    // 城镇间快速移动（消耗时间，走travelToWithTime）
+    if (nodeId.startsWith("_town_travel_")) { WorldSystem.travelToWithTime(nodeId.replace("_town_travel_", "")); return; }
 
     // 主线任务跳转
     if (nodeId.startsWith("_pmain_quest_go_")) {
@@ -492,6 +599,23 @@ const Game = {
       var locKey = nodeId.replace("_loc_quest_go_", "");
       if (typeof WorldSystem !== 'undefined' && typeof WorldSystem.travelToWithTime === 'function') {
         WorldSystem.travelToWithTime(locKey);
+      }
+      return;
+    }
+
+    // 支线任务快速到达
+    if (nodeId.startsWith("_side_quest_go_")) {
+      var sqLoc = nodeId.replace("_side_quest_go_", "");
+      if (typeof WorldSystem !== 'undefined' && typeof WorldSystem.travelToWithTime === 'function') {
+        WorldSystem.travelToWithTime(sqLoc);
+      }
+      return;
+    }
+    // 主线自定义支线快速到达
+    if (nodeId.startsWith("_story_quest_go_")) {
+      var sqArea = nodeId.replace("_story_quest_go_", "");
+      if (typeof WorldSystem !== 'undefined' && typeof WorldSystem.travelToWithTime === 'function') {
+        WorldSystem.travelToWithTime(sqArea);
       }
       return;
     }
@@ -632,10 +756,15 @@ const Game = {
     if (nodeId === "pmain_lingjie_tribulation") {
       if (this.state) {
         if (!this.state.pmainCompleted) this.state.pmainCompleted = [];
-        ["pmain_qixuan","pmain_tiannan","pmain_luanxing","pmain_xutiandian","pmain_mulan","pmain_zhuimogu","pmain_lingjie"].forEach(function(id) {
+        var story = (typeof WorldSystem !== 'undefined' && WorldSystem.PERMANENT_MAIN_STORY) ? WorldSystem.PERMANENT_MAIN_STORY : [];
+        var allIds = ["pmain_qixuan","pmain_tiannan","pmain_luanxing","pmain_xutiandian","pmain_mulan","pmain_zhuimogu","pmain_lingjie"];
+        allIds.forEach(function(id) {
           if (!this.includes(id)) this.push(id);
         }, this.state.pmainCompleted);
-        this.state.pmainProgress = 6;
+        this.state.pmainProgress = Math.max(0, story.length - 1);
+        // 接结局：自动触发动态结局，让玩家看到结局画面
+        var self = this;
+        setTimeout(function(){ self.triggerDynamicEnding(); }, 1200);
       }
     }
 
@@ -713,13 +842,11 @@ const Game = {
     }
     
     // 渲染选项
-    if (node.choices && node.choices.length > 0) {
-      // 动态选项处理
-      if (nodeId === "ending_choice") {
-        this.generateEndingChoices();
-      } else {
-        UI.renderChoices(node.choices);
-      }
+    if (nodeId === "ending_choice") {
+      // ending_choice 使用动态选项生成（choices 为空数组，需特殊处理）
+      this.generateEndingChoices();
+    } else if (node.choices && node.choices.length > 0) {
+      UI.renderChoices(node.choices);
     } else {
       UI.renderChoices([]);
     }
@@ -741,8 +868,8 @@ const Game = {
     if (effects.luck) { s.luck += effects.luck; }
     if (effects.maxHp) { s.maxHp += effects.maxHp; s.hp += effects.maxHp; }
     if (effects.maxMp) { s.maxMp += effects.maxMp; s.mp += effects.maxMp; }
-    if (effects.hp) { s.hp = Math.min(s.maxHp, s.hp + effects.hp); }
-    if (effects.mp) { s.mp = Math.min(s.maxMp, s.mp + effects.mp); }
+    if (effects.hp) { s.hp = Math.max(0, Math.min(s.maxHp, s.hp + effects.hp)); }
+    if (effects.mp) { s.mp = Math.max(0, Math.min(s.maxMp, s.mp + effects.mp)); }
 
     // 心魔和因果值
     if (effects.heartDemon) { s.heartDemon = (s.heartDemon || 0) + effects.heartDemon; }
@@ -762,31 +889,35 @@ const Game = {
     
     // 功法
     if (effects.technique) {
-      if (!s.techniques.includes(effects.technique)) {
+      var techDef = TECHNIQUES[effects.technique];
+      if (techDef && !s.techniques.includes(effects.technique)) {
         s.techniques.push(effects.technique);
-        UI.toast("学会功法：" + TECHNIQUES[effects.technique].name, "gold");
+        UI.toast("学会功法：" + techDef.name, "gold");
       }
     }
     if (effects.technique2) {
-      if (!s.techniques.includes(effects.technique2)) {
+      var techDef2 = TECHNIQUES[effects.technique2];
+      if (techDef2 && !s.techniques.includes(effects.technique2)) {
         s.techniques.push(effects.technique2);
-        UI.toast("学会功法：" + TECHNIQUES[effects.technique2].name, "gold");
+        UI.toast("学会功法：" + techDef2.name, "gold");
       }
     }
     
     // 仙蛊
     if (effects.guWorm) {
-      if (!s.guWorms.includes(effects.guWorm)) {
+      var guDef = GU_WORMS[effects.guWorm];
+      if (guDef && !s.guWorms.includes(effects.guWorm)) {
         s.guWorms.push(effects.guWorm);
-        UI.toast("获得仙蛊：" + GU_WORMS[effects.guWorm].name, "gold");
+        UI.toast("获得仙蛊：" + guDef.name, "gold");
       }
     }
     
     // 道侣
     if (effects.companion) {
-      if (!s.companions.includes(effects.companion)) {
+      var compDef = COMPANIONS[effects.companion];
+      if (compDef && !s.companions.includes(effects.companion)) {
         s.companions.push(effects.companion);
-        UI.toast("道侣加入：" + COMPANIONS[effects.companion].name + "！", "gold");
+        UI.toast("道侣加入：" + compDef.name + "！", "gold");
       }
     }
     
@@ -796,14 +927,35 @@ const Game = {
     
     // 标记
     if (effects.flag) s.flags[effects.flag] = true;
+
+    // 支线任务接取
+    if (effects.storyQuest) {
+      if (!s.storyQuests) s.storyQuests = [];
+      var sq = effects.storyQuest;
+      if (!s.storyQuests.find(q => q.id === sq.id)) {
+        s.storyQuests.push({id: sq.id, name: sq.name, desc: sq.desc, area: sq.area, areaName: sq.areaName, completed: false});
+        UI.toast("📋 接取支线任务：" + sq.name, "gold");
+      }
+    }
+    // 支线任务完成
+    if (effects.completeStoryQuest) {
+      if (!s.storyQuests) s.storyQuests = [];
+      var cq = s.storyQuests.find(q => q.id === effects.completeStoryQuest);
+      if (cq) {
+        cq.completed = true;
+        s.storyQuests = s.storyQuests.filter(q => q.id !== effects.completeStoryQuest);
+        UI.toast("✅ 完成支线任务：" + cq.name, "gold");
+      }
+    }
   },
   
   // ===== 获取经验 =====
   gainExp(amount) {
     this.state.exp += amount;
-    const cult = CULT_LEVELS[this.state.cultLevel];
-    while (this.state.exp >= cult.maxExp && this.state.cultLevel < CULT_LEVELS.length - 1) {
-      this.state.exp -= cult.maxExp;
+    // 在 while 循环体内实时读取当前境界的 maxExp，避免连续升级时用旧阈值
+    while (this.state.exp >= CULT_LEVELS[this.state.cultLevel].maxExp && this.state.cultLevel < CULT_LEVELS.length - 1) {
+      const curCult = CULT_LEVELS[this.state.cultLevel];
+      this.state.exp -= curCult.maxExp;
       this.cultUp();
     }
     UI.updateStats();
@@ -812,6 +964,29 @@ const Game = {
   // ===== 修为提升 =====
   cultUp() {
     if (this.state.cultLevel >= CULT_LEVELS.length - 1) return;
+    
+    // ===== 修炼锚定值：突破风险检查 =====
+    // 根基不足时突破有风险（走火入魔/根基受损）
+    var breakthroughRisk = 0;
+    var riskMsg = '';
+    if (typeof CultivationAnchors !== 'undefined') {
+      breakthroughRisk = CultivationAnchors.getBreakthroughRisk(this.state);
+      if (breakthroughRisk > 30) {
+        // 突破失败：根基受损
+        var failChance = Math.min(0.5, breakthroughRisk / 200);
+        if (Math.random() < failChance) {
+          // 突破失败：损失部分经验，根基受损
+          CultivationAnchors.modify(this.state, 'foundation', -10);
+          CultivationAnchors.modify(this.state, 'bodyCapacity', -8);
+          this.state.exp = Math.floor(this.state.exp * 0.5);
+          UI.toast("⚠ 突破失败！根基不稳，修为倒退。", "danger");
+          UI.updateStats();
+          return;
+        }
+        riskMsg = '（突破失败率' + Math.floor(failChance * 100) + '%）';
+      }
+    }
+    
     this.state.cultLevel++;
     const cult = CULT_LEVELS[this.state.cultLevel];
     
@@ -829,12 +1004,208 @@ const Game = {
     this.state.hp = this.state.maxHp;
     this.state.mp = this.state.maxMp;
     
-    UI.toast("✨ 修为提升至：" + cult.name + "！", "gold");
+    UI.toast("✨ 修为提升至：" + cult.name + "！" + riskMsg, "gold");
+    
+    // ===== 突破后：检查修行债务后果 =====
+    if (typeof CultivationDebt !== 'undefined') {
+      var consequences = CultivationDebt.checkDebtConsequences(this.state);
+      for (var i = 0; i < consequences.length; i++) {
+        var c = consequences[i];
+        UI.toast(c.msg, "danger");
+        if (c.effect && c.effect.hp) {
+          this.state.hp = Math.max(1, this.state.hp + c.effect.hp);
+        }
+        if (c.effect && c.effect.heartDemon) {
+          this.state.heartDemon = (this.state.heartDemon || 0) + c.effect.heartDemon;
+        }
+      }
+    }
+    
+    // ===== 突破后：根基/掌控度自然小幅成长（苦修路线）=====
+    if (typeof CultivationAnchors !== 'undefined' && typeof CultivationPaths !== 'undefined') {
+      var curPath = CultivationPaths.getCurrentPath(this.state);
+      // 正常苦修路线突破后根基略增
+      if (this.state.cultivationPath === 'bitter_cultivation' || this.state.cultivationPath === 'sect_inheritance') {
+        CultivationAnchors.modify(this.state, 'foundation', 3);
+        CultivationAnchors.modify(this.state, 'daoMastery', 2);
+      }
+    }
     
     // 成就检查
     const stageAch = ["","","foundation","core_formation","infant","spirit_transformation","body_merge","great_vehicle","tribulation","ascension"];
     const stage = cult.stage;
     if (stageAch[stage+1]) this.giveAchievement(stageAch[stage+1]);
+  },
+
+  // ===== 切换修炼道路（多路线抵达大道）=====
+  switchCultivationPath(pathId, reason) {
+    if (typeof CultivationPaths === 'undefined') {
+      UI.toast("修炼道路系统未加载", "danger");
+      return;
+    }
+    var curPath = CultivationPaths.getCurrentPath(this.state);
+    if (curPath === CultivationPaths.PATHS[pathId]) {
+      UI.toast("当前已是" + curPath.name, "info");
+      return;
+    }
+    CultivationPaths.switchPath(this.state, pathId, reason);
+    var newPath = CultivationPaths.PATHS[pathId];
+    UI.toast("修炼道路变更为：" + newPath.name, "gold");
+    UI.updateAll();
+  },
+
+  // ===== 显示修炼锚定值面板 =====
+  showAnchorsPanel() {
+    if (typeof CultivationAnchors === 'undefined') {
+      UI.toast("锚定值系统未加载", "danger");
+      return;
+    }
+    CultivationAnchors.initState(this.state);
+    var s = this.state;
+    var html = '<div class="modal-section"><div class="modal-section-title">修炼锚定值</div>';
+    html += '<div style="font-size:0.8em;color:var(--text-dim);margin-bottom:8px;">境界≠战力，以下维度独立影响不同游戏机制</div>';
+    for (var key in CultivationAnchors.DEFINITIONS) {
+      var def = CultivationAnchors.DEFINITIONS[key];
+      var val = s.anchors[key] || 0;
+      var status = CultivationAnchors.getAnchorStatus(key, val);
+      var barColor = (key === 'karmaLoad' || key === 'identityRisk') ? 
+        (val < 20 ? 'var(--jade)' : (val < 50 ? 'var(--gold)' : 'var(--crimson)')) :
+        (val >= 70 ? 'var(--jade)' : (val >= 50 ? 'var(--gold)' : 'var(--crimson)'));
+      html += '<div style="margin-bottom:10px;">';
+      html += '<div style="display:flex;justify-content:space-between;font-size:0.85em;">';
+      html += '<span>' + def.name + '</span>';
+      html += '<span style="color:' + barColor + ';">' + val + ' (' + status + ')</span>';
+      html += '</div>';
+      html += '<div style="font-size:0.7em;color:var(--text-dim);margin:2px 0;">' + def.desc + '</div>';
+      html += '<div style="background:var(--bg-darker);height:6px;border-radius:3px;overflow:hidden;">';
+      html += '<div style="width:' + val + '%;height:100%;background:' + barColor + ';"></div>';
+      html += '</div></div>';
+    }
+    // 显示当前修炼道路
+    if (typeof CultivationPaths !== 'undefined') {
+      var path = CultivationPaths.getCurrentPath(s);
+      html += '<div style="margin-top:12px;padding:8px;border-top:1px solid var(--border);">';
+      html += '<div style="font-size:0.85em;color:var(--gold);">当前道路：' + path.name + '</div>';
+      html += '<div style="font-size:0.75em;color:var(--text-dim);">' + path.desc + '</div>';
+      html += '</div>';
+    }
+    // 显示战力转化系数
+    var mult = CultivationAnchors.getCombatMultiplier(s);
+    html += '<div style="margin-top:8px;font-size:0.8em;color:var(--jade);">当前战力转化系数：' + mult.toFixed(2) + 'x</div>';
+    html += '</div>';
+    UI.showModalBody(html, '<button class="btn-combat" onclick="UI.closeModal()">关闭</button>');
+  },
+
+  // ===== 显示修行债务面板 =====
+  showDebtsPanel() {
+    if (typeof CultivationDebt === 'undefined') {
+      UI.toast("债务系统未加载", "danger");
+      return;
+    }
+    CultivationDebt.initState(this.state);
+    var s = this.state;
+    var debts = CultivationDebt.getDebtList(s);
+    var severity = CultivationDebt.getDebtSeverity(s);
+    var html = '<div class="modal-section"><div class="modal-section-title">修行债务</div>';
+    html += '<div style="font-size:0.8em;color:var(--text-dim);margin-bottom:8px;">速成路线的延迟代价。债务可偿还、延后、隐藏或转化</div>';
+    html += '<div style="margin-bottom:12px;font-size:0.9em;">总债务等级：<span style="color:var(--' + severity.color + ');">' + severity.label + '</span></div>';
+    if (debts.length === 0) {
+      html += '<div style="text-align:center;padding:16px;color:var(--jade);">✓ 无修行债务，根基清净</div>';
+    } else {
+      debts.forEach(function(d) {
+        html += '<div style="margin-bottom:10px;padding:8px;border:1px solid var(--border);border-radius:4px;">';
+        html += '<div style="display:flex;justify-content:space-between;">';
+        html += '<span style="color:var(--gold);">' + d.name + '</span>';
+        html += '<span style="color:var(--crimson);">债务值：' + d.amount + '</span>';
+        html += '</div>';
+        html += '<div style="font-size:0.7em;color:var(--text-dim);margin:4px 0;">' + d.desc + '</div>';
+        html += '<div style="font-size:0.7em;color:var(--crimson);">可能后果：' + d.consequences.join('、') + '</div>';
+        html += '<div style="font-size:0.7em;color:var(--jade);">补全方式：' + d.resolutions.join('、') + '</div>';
+        html += '</div>';
+      });
+    }
+    // 秘密压力
+    var pressure = s.secretPressure || 0;
+    html += '<div style="margin-top:12px;padding:8px;border-top:1px solid var(--border);">';
+    html += '<div style="font-size:0.85em;">秘密压力：<span style="color:' + (pressure > 50 ? 'var(--crimson)' : 'var(--gold)') + ';">' + pressure + '</span></div>';
+    html += '<div style="font-size:0.7em;color:var(--text-dim);">维持谎言的长期成本，过高时秘密可能暴露</div>';
+    html += '</div>';
+    html += '</div>';
+    UI.showModalBody(html, '<button class="btn-combat" onclick="UI.closeModal()">关闭</button>');
+  },
+
+  // ===== 社会动作入口（供UI调用）=====
+  socialAction(action, npcId) {
+    if (typeof SocialSystem === 'undefined') {
+      UI.toast("社会系统未加载", "danger");
+      return;
+    }
+    var s = this.state;
+    var npc = s.npcList ? s.npcList.find(function(n) { return n.id === npcId; }) : null;
+    if (!npc) {
+      UI.toast("找不到该NPC", "danger");
+      return;
+    }
+    if (npc.isAlive === false) {
+      UI.toast(npc.name + "已不在人世", "danger");
+      return;
+    }
+    var result;
+    var args = Array.prototype.slice.call(arguments, 2);
+    switch (action) {
+      case 'talk':
+        result = SocialSystem.talk(npc, s);
+        break;
+      case 'inquire':
+        result = SocialSystem.inquire(npc, args[0] || '近期消息', s);
+        break;
+      case 'probe':
+        result = SocialSystem.probe(npc, s);
+        break;
+      case 'threaten':
+        result = SocialSystem.threaten(npc, s);
+        break;
+      case 'giveGift':
+        // args[0] = itemId，需要从背包消耗
+        if (!args[0]) { UI.toast("请选择礼物", "danger"); return; }
+        var inv = s.inventory.find(function(i) { return i.id === args[0]; });
+        if (!inv || inv.count <= 0) { UI.toast("物品不足", "danger"); return; }
+        result = SocialSystem.giveGift(npc, args[0], s);
+        if (result.success) {
+          inv.count--;
+          if (inv.count <= 0) s.inventory = s.inventory.filter(function(i) { return i.id !== args[0]; });
+          UI.updateInventory();
+        }
+        break;
+      case 'steal':
+        result = SocialSystem.steal(npc, s);
+        if (result.success && result.stolenItem) {
+          this.addItem(result.stolenItem, 1);
+        }
+        if (result.success && result.stolenStones) {
+          s.spiritStones += result.stolenStones;
+        }
+        break;
+      case 'deceive':
+        result = SocialSystem.deceive(npc, args[0] || '编造的谎言', s);
+        break;
+      case 'assassinate':
+        result = SocialSystem.assassinate(npc, s);
+        break;
+      case 'befriend':
+        result = SocialSystem.befriend(npc, s);
+        break;
+      case 'swornSiblings':
+        result = SocialSystem.swornSiblings(npc, s);
+        break;
+      default:
+        UI.toast("未知动作", "danger");
+        return;
+    }
+    if (result && result.message) {
+      UI.toast(result.message, result.success === false ? "danger" : "success");
+    }
+    UI.updateAll();
   },
   
   // ===== 添加物品 =====
@@ -857,21 +1228,85 @@ const Game = {
   useItem(itemId) {
     const item = ITEMS[itemId];
     if (!item || item.type !== "consumable") return;
-    
+
     const invItem = this.state.inventory.find(i => i.id === itemId);
     if (!invItem) return;
-    
+
     if (item.effect) {
       if (item.effect.hp) this.state.hp = Math.min(this.state.maxHp, this.state.hp + item.effect.hp);
       if (item.effect.mp) this.state.mp = Math.min(this.state.maxMp, this.state.mp + item.effect.mp);
       UI.toast("使用" + item.name + "，" + (item.effect.hp ? "恢复" + item.effect.hp + "气血" : "") + (item.effect.mp ? "恢复" + item.effect.mp + "灵力" : ""), "success");
     }
-    
+
     invItem.count--;
     if (invItem.count <= 0) {
       this.state.inventory = this.state.inventory.filter(i => i.id !== itemId);
     }
     UI.updateAll();
+
+    // 战斗中使用物品：消耗回合，触发敌人攻击
+    if (this.combatState) {
+      this._enemyTurnInCombat();
+    }
+  },
+
+  // ===== 战斗中敌人回合（供 useItem 复用，避免无限回血漏洞） =====
+  _enemyTurnInCombat() {
+    const cs = this.combatState;
+    if (!cs) return;
+    const s = this.state;
+    cs.turn++;
+
+    // 修炼锚定值：根基/肉身承载度影响防御效果
+    var defMult = (typeof CultivationAnchors !== 'undefined') ? CultivationAnchors.getDefenseMultiplier(s) : 1;
+    let enemyDmg = Math.max(1, cs.enemy.atk - Math.floor(s.def * defMult * 0.5));
+    if (Math.random() < 0.1) {
+      enemyDmg = Math.floor(enemyDmg * 1.5);
+      this.combatLog("敌人暴击！", "system");
+    }
+    if (cs.defending) { enemyDmg = Math.floor(enemyDmg * 0.5); cs.defending = false; }
+
+    let guDefReduction = 0;
+    s.guWorms.forEach(g => {
+      const gu = GU_WORMS[g];
+      const gLevel = (s.guWormLevels[g] || {level:1}).level;
+      const growthMult = 1 + (gLevel - 1) * GU_LEVEL_DATA.growthPerLevel;
+      if (gu.defBonus) guDefReduction += Math.floor(gu.defBonus * growthMult * 0.3);
+    });
+    enemyDmg = Math.max(1, enemyDmg - guDefReduction);
+    s.companions.forEach(c => {
+      const comp = COMPANIONS[c];
+      const cData = s.companionData[c] || {level:1, affinity:0};
+      const levelMult = 1 + (cData.level - 1) * COMPANION_LEVEL_DATA.defGrowth;
+      enemyDmg = Math.max(1, enemyDmg - Math.floor(comp.defBonus * 0.3 * levelMult));
+    });
+
+    s.hp -= enemyDmg;
+    this.combatLog(cs.enemy.name + "攻击你，造成" + enemyDmg + "伤害。", "enemy");
+
+    let regen = 0;
+    if (s.guWorms.includes("blood_spirit_gu")) {
+      const gLevel = (s.guWormLevels["blood_spirit_gu"] || {level:1}).level;
+      regen += (5 + Math.floor(s.cultLevel * 2)) * gLevel;
+    }
+    if (s.guWorms.includes("wind_blood_gu")) {
+      const gLevel = (s.guWormLevels["wind_blood_gu"] || {level:1}).level;
+      regen += (15 + Math.floor(s.cultLevel * 3)) * gLevel;
+    }
+    if (regen > 0) {
+      s.hp = Math.min(s.maxHp, s.hp + regen);
+      this.combatLog("仙蛊为你恢复" + regen + "气血。", "system");
+    }
+
+    if (s.hp <= 0) {
+      s.hp = 0;
+      this.combatLog("你被击败了……", "system");
+      this.combatDefeat();
+      return;
+    }
+
+    UI.updateCombat(this.combatState);
+    UI.updateStats();
   },
   
   // ===== 装备物品 =====
@@ -930,18 +1365,19 @@ const Game = {
     if (item.atk) this.state.atk += item.atk;
     if (item.def) this.state.def += item.def;
     if (item.spd) this.state.spd += item.spd;
-    if (item.maxMp) { this.state.maxMp += item.maxMp; this.state.mp += item.maxMp; }
-    if (item.maxHp) { this.state.maxHp += item.maxHp; this.state.hp += item.maxHp; }
+    if (item.maxMp) { this.state.maxMp += item.maxMp; this.state.mp = Math.min(this.state.maxMp, this.state.mp + item.maxMp); }
+    if (item.maxHp) { this.state.maxHp += item.maxHp; this.state.hp = Math.min(this.state.maxHp, this.state.hp + item.maxHp); }
   },
-  
+
   removeItemEffects(itemId) {
     const item = ITEMS[itemId];
     if (!item) return;
     if (item.atk) this.state.atk -= item.atk;
     if (item.def) this.state.def -= item.def;
     if (item.spd) this.state.spd -= item.spd;
-    if (item.maxMp) { this.state.maxMp -= item.maxMp; this.state.mp = Math.min(this.mp, this.state.maxMp); }
-    if (item.maxHp) { this.state.maxHp -= item.maxHp; this.state.hp = Math.min(this.hp, this.state.maxHp); }
+    // 卸下装备时同步扣减当前 hp/mp，防止"装备→卸下"无限回血漏洞
+    if (item.maxMp) { this.state.maxMp -= item.maxMp; this.state.mp = Math.max(0, Math.min(this.state.mp - item.maxMp, this.state.maxMp)); }
+    if (item.maxHp) { this.state.maxHp -= item.maxHp; this.state.hp = Math.max(1, Math.min(this.state.hp - item.maxHp, this.state.maxHp)); }
   },
   
   // ===== 开窍 =====
@@ -1084,8 +1520,10 @@ const Game = {
     cs.turn++;
     
     let playerDmg = 0;
+    // ===== 修炼锚定值：战力转化率/根基/掌控度影响实际输出 =====
+    var combatMult = (typeof CultivationAnchors !== 'undefined') ? CultivationAnchors.getCombatMultiplier(s) : 1;
     if (action === "attack") {
-      playerDmg = Math.max(1, s.atk - Math.floor(cs.enemy.def * 0.5));
+      playerDmg = Math.max(1, Math.floor(s.atk * combatMult) - Math.floor(cs.enemy.def * 0.5));
       // 道侣主动攻击
       let companionDmg = 0;
       s.companions.forEach(c => {
@@ -1099,12 +1537,44 @@ const Game = {
         this.combatLog("道侣助攻击造成" + companionDmg + "伤害！", "player");
         playerDmg += companionDmg;
       }
-      // 同行NPC助战（扩展8）
-      if (typeof WorldSystem !== 'undefined' && typeof WorldSystem.getTravelCompanionCombat === 'function') {
+      // 同行NPC助战（扩展8）—— 遍历整个队伍
+      if (s.party && s.party.length > 0) {
+        s.party.forEach(memberId => {
+          var travelComp = null;
+          if (memberId.startsWith('comp_')) {
+            var compId = memberId.replace('comp_', '');
+            var comp = COMPANIONS[compId];
+            if (!comp) return;
+            var cData = s.companionData[compId] || {level:1, affinity:0};
+            var levelMult = 1 + (cData.level - 1) * COMPANION_LEVEL_DATA.atkGrowth;
+            var affMult = this.getAffinityMult(cData.affinity);
+            travelComp = {
+              name: comp.name,
+              atk: Math.floor(comp.atkBonus * levelMult * affMult),
+              def: Math.floor(comp.defBonus * (1 + (cData.level - 1) * COMPANION_LEVEL_DATA.defGrowth) * affMult),
+            };
+          } else if (typeof WorldSystem !== 'undefined' && typeof WorldSystem.getTravelCompanionCombat === 'function' && s.travelCompanion === memberId) {
+            travelComp = WorldSystem.getTravelCompanionCombat(s);
+          } else {
+            // 普通NPC队伍成员
+            var npc = s.npcList ? s.npcList.find(function(n) { return n.id === memberId; }) : null;
+            if (npc) travelComp = { name: npc.name, atk: npc.atk || 10, def: npc.def || 5 };
+          }
+          if (travelComp) {
+            var compDmg = Math.max(1, travelComp.atk - Math.floor(cs.enemy.def * 0.3));
+            if (Math.random() < 0.12) {
+              compDmg = Math.floor(compDmg * 1.6);
+              this.combatLog(travelComp.name + "暴击！", "system");
+            }
+            playerDmg += compDmg;
+            this.combatLog(travelComp.name + "助战造成" + compDmg + "伤害！", "player");
+          }
+        });
+      } else if (typeof WorldSystem !== 'undefined' && typeof WorldSystem.getTravelCompanionCombat === 'function') {
+        // 兼容旧系统：只有 travelCompanion 没有加入 party 的情况
         var travelComp = WorldSystem.getTravelCompanionCombat(s);
         if (travelComp) {
           var compDmg = Math.max(1, travelComp.atk - Math.floor(cs.enemy.def * 0.3));
-          // 同行NPC暴击
           if (Math.random() < 0.12) {
             compDmg = Math.floor(compDmg * 1.6);
             this.combatLog(travelComp.name + "暴击！", "system");
@@ -1145,6 +1615,8 @@ const Game = {
       if (s.mp < tech.mpCost) { UI.toast("灵力不足！", "danger"); return; }
       s.mp -= tech.mpCost;
       playerDmg = tech.damage || 0;
+      // 修炼锚定值影响功法威力（道法掌控度低则技能不稳）
+      playerDmg = Math.floor(playerDmg * combatMult);
       // 灵根+修为+技能等级伤害加成（扩展8）
       if (typeof WorldSystem !== 'undefined' && typeof WorldSystem.computeTechniqueDamage === 'function') {
         playerDmg = WorldSystem.computeTechniqueDamage(playerDmg, tech, s);
@@ -1200,7 +1672,9 @@ const Game = {
     }
     
     // 敌人攻击 - AI增强
-    let enemyDmg = Math.max(1, cs.enemy.atk - Math.floor(s.def * 0.5));
+    // 修炼锚定值：根基/肉身承载度影响防御效果
+    var defMult = (typeof CultivationAnchors !== 'undefined') ? CultivationAnchors.getDefenseMultiplier(s) : 1;
+    let enemyDmg = Math.max(1, cs.enemy.atk - Math.floor(s.def * defMult * 0.5));
     // 敌人暴击
     if (Math.random() < 0.1) {
       enemyDmg = Math.floor(enemyDmg * 1.5);
@@ -1256,37 +1730,103 @@ const Game = {
   
   combatVictory() {
     const cs = this.combatState;
+    if (!cs) return;
     const s = this.state;
     s.battlesWon++;
     if (s.battlesWon === 1) this.giveAchievement("first_kill");
-    
-    // 奖励
-    this.gainExp(cs.enemy.exp);
-    s.spiritStones += cs.enemy.stone;
-    this.combatLog("获得" + cs.enemy.exp + "经验，" + cs.enemy.stone + "灵石。", "system");
-    
-    // 掉落
-    if (cs.enemy.drop && Math.random() < cs.enemy.dropRate) {
-      this.addItem(cs.enemy.drop, 1);
-      this.combatLog("获得掉落：" + ITEMS[cs.enemy.drop].name, "system");
+
+    const isWild = !!cs.isWild;
+    // 野外战斗：不在这里发奖励/不清空 combatState，留给 wildVictory 统一处理（防重复发放 + 防 null 读取）
+    if (!isWild) {
+      // 奖励
+      this.gainExp(cs.enemy.exp);
+      s.spiritStones += cs.enemy.stone;
+      this.combatLog("获得" + cs.enemy.exp + "经验，" + cs.enemy.stone + "灵石。", "system");
+
+      // 掉落（支持 ITEMS / GU_WORMS / TECHNIQUES 三种类型掉落）
+      if (cs.enemy.drop && Math.random() < cs.enemy.dropRate) {
+        this._applyDrop(cs.enemy.drop, "system");
+      }
     }
-    
+
     UI.hideCombat();
-    
+
     const winNode = cs.onWin;
-    this.combatState = null;
-    setTimeout(() => this.gotoNode(winNode), 800);
+    if (!isWild) this.combatState = null;
+    if (winNode) {
+      setTimeout(() => this.gotoNode(winNode), 800);
+    } else {
+      // 兜底：无 onWin 则回到当前剧情节点，允许继续选择
+      if (!isWild) this.combatState = null;
+      UI.toast("战斗胜利！", "success");
+    }
   },
-  
+
   combatDefeat() {
     const cs = this.combatState;
+    if (!cs) return;
     const s = this.state;
     s.hp = Math.floor(s.maxHp * 0.3); // 复活
     s.mp = Math.floor(s.maxMp * 0.3);
     UI.hideCombat();
     const loseNode = cs.onLose;
-    this.combatState = null;
-    setTimeout(() => this.gotoNode(loseNode), 800);
+    const isWild = !!cs.isWild;
+    if (!isWild) this.combatState = null;
+    if (loseNode) {
+      setTimeout(() => this.gotoNode(loseNode), 800);
+    } else {
+      if (!isWild) this.combatState = null;
+      UI.toast("你被击败了……", "danger");
+      setTimeout(() => this.gotoNode(s.currentNode || "start"), 800);
+    }
+  },
+
+  // 统一处理三种掉落类型（道具/仙蛊/功法），避免 ITEMS[xx].name 崩溃
+  _applyDrop(dropId, logType) {
+    const s = this.state;
+    if (ITEMS[dropId]) {
+      this.addItem(dropId, 1);
+      if (typeof this.combatLog === 'function' && this.combatState) {
+        this.combatLog("获得掉落：" + ITEMS[dropId].name, logType || "system");
+      }
+      return;
+    }
+    if (GU_WORMS[dropId]) {
+      const gu = GU_WORMS[dropId];
+      if (!s.guWorms.includes(dropId)) {
+        s.guWorms.push(dropId);
+        s.guWormLevels[dropId] = { level: 1, exp: 0 };
+        if (typeof this.combatLog === 'function' && this.combatState) {
+          this.combatLog("获得仙蛊：" + gu.name, logType || "system");
+        }
+        UI.toast("✨ 获得仙蛊：" + gu.name + "！", "gold");
+      } else {
+        // 已有仙蛊→折算灵石
+        s.spiritStones += 200;
+        if (typeof this.combatLog === 'function' && this.combatState) {
+          this.combatLog("仙蛊" + gu.name + "已拥有，折算200灵石", logType || "system");
+        }
+      }
+      return;
+    }
+    if (TECHNIQUES[dropId]) {
+      const t = TECHNIQUES[dropId];
+      if (!s.techniques.includes(dropId)) {
+        s.techniques.push(dropId);
+        if (typeof this.combatLog === 'function' && this.combatState) {
+          this.combatLog("学会功法：" + t.name, logType || "system");
+        }
+        UI.toast("✨ 学会功法：" + t.name + "！", "gold");
+      } else {
+        s.spiritStones += 300;
+        if (typeof this.combatLog === 'function' && this.combatState) {
+          this.combatLog("功法" + t.name + "已学会，折算300灵石", logType || "system");
+        }
+      }
+      return;
+    }
+    // 未知掉落，忽略
+    console.warn("[drop] 未知掉落ID：", dropId);
   },
   
   combatLog(msg, type) {
@@ -1300,6 +1840,26 @@ const Game = {
     const ending = ENDINGS[endingId];
     if (!ending) return;
     UI.showEnding(ending);
+  },
+
+  // 结局后继续游玩（保留当前存档，进入后日谈）
+  continueAfterEnding() {
+    const s = this.state;
+    if (!s) { location.reload(); return; }
+    // 标记已通关，进入后日谈模式
+    s.flags = s.flags || {};
+    s.flags.gameCompleted = true;
+    s.flags.postEnding = true;
+    // 恢复生命灵力
+    s.hp = s.maxHp;
+    s.mp = s.maxMp;
+    // 隐藏结局画面，通过 UI.showGameScreen 正确显示游戏主界面（含 updateAll）
+    document.getElementById('ending-screen').style.display = 'none';
+    UI.showGameScreen();
+    if (typeof MobileUI !== 'undefined') MobileUI.onGameStart();
+    // 进入后日谈枢纽节点（gotoNode 内会 autoSave 重建存档）
+    this.gotoNode('after_ending_hub');
+    UI.toast('已进入后日谈·继续游玩模式');
   },
   
   triggerDynamicEnding() {
@@ -1325,7 +1885,7 @@ const Game = {
     }
     
     // 最强结局条件
-    if (s.cultLevel >= 24 && s.companions.length >= 3 && s.apertures.length >= 8 && s.achievements.includes("all_techniques")) {
+    if (s.cultLevel >= CULT_LEVELS.length - 1 && s.companions.length >= 3 && s.apertures.length >= 8 && s.achievements.includes("all_techniques")) {
       endingId = "true_immortal";
     }
     
@@ -1591,10 +2151,13 @@ const Game = {
   // ===== 道侣面板 =====
   showCompanionPanel() {
     const s = this.state;
+    if (!s.spouses) s.spouses = [];
+    if (!s.party) s.party = [];
     let html = '<div class="modal-section"><div class="modal-section-title">道侣列表（可养成）</div>';
-    if (s.companions.length === 0) {
-      html += '<div style="color:var(--text-dim);text-align:center;">尚无道侣<br><span style="font-size:0.8em;">在剧情中结识道侣，可获得战斗加成</span></div>';
+    if (s.companions.length === 0 && s.spouses.length === 0) {
+      html += '<div style="color:var(--text-dim);text-align:center;">尚无道侣<br><span style="font-size:0.8em;">在剧情中结识道侣，或在NPC详情中求婚，可获得战斗加成</span></div>';
     } else {
+      // 剧情道侣
       s.companions.forEach(c => {
         const comp = COMPANIONS[c];
         const cData = s.companionData[c] || {level:1, exp:0, affinity:0};
@@ -1603,10 +2166,11 @@ const Game = {
         const affMult = this.getAffinityMult(cData.affinity);
         const finalAtk = Math.floor(comp.atkBonus * levelMult * affMult);
         const finalDef = Math.floor(comp.defBonus * (1 + (cData.level - 1) * COMPANION_LEVEL_DATA.defGrowth) * affMult);
-        
+        const inParty = s.party.includes('comp_' + c);
+
         html += '<div class="modal-item-row" style="flex-direction:column;align-items:flex-start;">';
         html += '<div style="width:100%;display:flex;justify-content:space-between;align-items:center;">';
-        html += '<div><div style="color:var(--gold-bright);">💕 ' + comp.name + '</div>';
+        html += '<div><div style="color:var(--gold-bright);">💕 ' + comp.name + (inParty ? ' 🚶同行中' : '') + '</div>';
         html += '<div class="modal-item-desc">' + comp.desc + '</div>';
         html += '<div class="modal-item-stats">';
         html += 'Lv.' + cData.level + '/' + COMPANION_LEVEL_DATA.maxLevel + ' | ';
@@ -1614,10 +2178,10 @@ const Game = {
         html += '攻击加成：+' + finalAtk + ' | 防御加成：+' + finalDef + ' | ';
         html += '特殊：' + comp.special;
         html += '</div></div></div>';
-        
+
         // 亲密度进度条
         html += '<div class="exp-bar-wrap" style="margin:6px 0;"><div class="exp-bar-fill" style="width:' + cData.affinity + '%"></div><span>亲密度 ' + cData.affinity + '/100</span></div>';
-        
+
         // 互动按钮
         html += '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">';
         COMPANION_LEVEL_DATA.interactions.forEach(inter => {
@@ -1627,10 +2191,46 @@ const Game = {
           if (inter.cost) html += '(💎' + inter.cost + ')';
           html += '</button>';
         });
+        // 赠送丹药按钮
+        html += '<button class="btn-combat" style="font-size:0.7em;padding:4px 8px;border-color:var(--jade);color:var(--jade-bright);" onclick="Game.givePillToCompanion(\'' + c + '\')" title="赠送修为丹药提升道侣实力">💊 赠送丹药</button>';
+        // 同行按钮
+        if (inParty) {
+          html += '<button class="btn-combat" style="font-size:0.7em;padding:4px 8px;border-color:var(--crimson);color:var(--crimson-bright);" onclick="Game.removeFromParty(\'comp_' + c + '\')">离开队伍</button>';
+        } else {
+          html += '<button class="btn-combat" style="font-size:0.7em;padding:4px 8px;" onclick="Game.addToParty(\'comp_' + c + '\')">加入队伍</button>';
+        }
         html += '</div>';
-        
+
         html += '</div>';
       });
+
+      // 世界NPC道侣（spouses）
+      if (s.spouses.length > 0) {
+        html += '<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border-dim);"><div style="color:var(--text-dim);font-size:0.85em;margin-bottom:6px;">道侣（世界NPC）</div>';
+        s.spouses.forEach(npcId => {
+          const npc = s.npcList ? s.npcList.find(n => n.id === npcId) : null;
+          if (!npc) return;
+          const inParty = s.party.includes(npcId);
+          const atkBonus = s.spouseAtkBonus || 0;
+          const defBonus = s.spouseDefBonus || 0;
+          html += '<div class="modal-item-row" style="flex-direction:column;align-items:flex-start;">';
+          html += '<div style="width:100%;display:flex;justify-content:space-between;align-items:center;">';
+          html += '<div><div style="color:var(--gold-bright);">💕 ' + npc.name + (inParty ? ' 🚶同行中' : '') + '</div>';
+          html += '<div class="modal-item-desc">好感度：' + (npc.mood || 0) + '/100 | 修为：' + (npc.cultName || '凡人') + '</div>';
+          html += '<div class="modal-item-stats">攻击加成：+' + atkBonus + ' | 防御加成：+' + defBonus + '</div>';
+          html += '</div></div>';
+          // 同行按钮
+          html += '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">';
+          if (inParty) {
+            html += '<button class="btn-combat" style="font-size:0.7em;padding:4px 8px;border-color:var(--crimson);color:var(--crimson-bright);" onclick="Game.removeFromParty(\'' + npcId + '\')">离开队伍</button>';
+          } else {
+            html += '<button class="btn-combat" style="font-size:0.7em;padding:4px 8px;" onclick="Game.addToParty(\'' + npcId + '\')">加入队伍</button>';
+          }
+          html += '</div>';
+          html += '</div>';
+        });
+        html += '</div>';
+      }
     }
     html += '</div>';
     
@@ -1838,6 +2438,11 @@ const Game = {
   companionInteract(compId, interactionId) {
     const s = this.state;
     if (!s.companions.includes(compId)) return;
+    // 赠送丹药特殊处理：打开丹药选择面板
+    if (interactionId === 'gift_pill') {
+      this.givePillToCompanion(compId);
+      return;
+    }
     const inter = COMPANION_LEVEL_DATA.interactions.find(i => i.id === interactionId);
     if (!inter) return;
     const cData = s.companionData[compId] || {level:1, exp:0, affinity:0};
@@ -1870,7 +2475,194 @@ const Game = {
     UI.closeModal();
     setTimeout(()=>UI.showPanel('companion'), 100);
   },
-  
+
+  // ===== 赠送丹药给道侣 =====
+  givePillToCompanion(compId) {
+    const s = this.state;
+    if (!s.companions.includes(compId)) return;
+    // 筛选背包中的丹药类消耗品
+    const pills = s.inventory.filter(i => {
+      const item = ITEMS[i.id];
+      return item && item.type === "consumable";
+    });
+    if (pills.length === 0) {
+      UI.toast("背包中没有可赠送的丹药！", "danger");
+      return;
+    }
+    let html = '<div class="modal-section"><div class="modal-section-title">💊 赠送丹药给' + COMPANIONS[compId].name + '</div>';
+    html += '<div style="color:var(--text-dim);font-size:0.85em;margin-bottom:8px;">选择丹药赠予道侣，可提升其经验与亲密度。丹药品质越高，效果越好。</div>';
+    pills.forEach(inv => {
+      const item = ITEMS[inv.id];
+      // 根据丹药品质计算经验值
+      const pillExp = (item.grade || 1) * 150 + (item.hp ? item.hp * 2 : 0) + (item.mp ? item.mp * 2 : 0);
+      const pillAff = Math.floor(pillExp / 100);
+      html += '<div class="modal-item-row" style="cursor:pointer;" onclick="Game.confirmGivePill(\'' + compId + '\',\'' + inv.id + '\')">';
+      html += '<div><div style="color:var(--gold-bright);">' + item.name + ' ×' + inv.count + '</div>';
+      html += '<div class="modal-item-desc">' + (item.desc || '') + '</div>';
+      html += '<div class="modal-item-stats">道侣经验+' + pillExp + ' | 亲密度+' + pillAff + '</div>';
+      html += '</div></div>';
+    });
+    html += '</div>';
+    UI.showModalBody(html, '<button class="btn-combat" onclick="UI.showPanel(\'companion\')">返回</button>');
+  },
+
+  confirmGivePill(compId, itemId) {
+    const s = this.state;
+    if (!s.companions.includes(compId)) return;
+    const inv = s.inventory.find(i => i.id === itemId);
+    if (!inv || inv.count <= 0) return;
+    const item = ITEMS[itemId];
+    if (!item) return;
+    // 计算经验值
+    const pillExp = (item.grade || 1) * 150 + (item.hp ? item.hp * 2 : 0) + (item.mp ? item.mp * 2 : 0);
+    const pillAff = Math.floor(pillExp / 100);
+    // 消耗丹药
+    inv.count--;
+    if (inv.count <= 0) {
+      const idx = s.inventory.indexOf(inv);
+      if (idx >= 0) s.inventory.splice(idx, 1);
+    }
+    // 增加道侣经验和亲密度
+    const cData = s.companionData[compId] || {level:1, exp:0, affinity:0};
+    cData.affinity = Math.min(100, cData.affinity + pillAff);
+    if (cData.level < COMPANION_LEVEL_DATA.maxLevel) {
+      cData.exp = (cData.exp || 0) + pillExp;
+      const needed = COMPANION_LEVEL_DATA.expPerLevel[cData.level - 1];
+      while (cData.exp >= needed && cData.level < COMPANION_LEVEL_DATA.maxLevel) {
+        cData.exp -= needed;
+        cData.level++;
+        UI.toast("💕 " + COMPANIONS[compId].name + "升级至" + cData.level + "级！", "gold");
+        if (cData.level >= COMPANION_LEVEL_DATA.maxLevel) { cData.exp = 0; break; }
+      }
+    }
+    s.companionData[compId] = cData;
+    UI.toast("💊 " + COMPANIONS[compId].name + "服用" + item.name + "，经验+" + pillExp + "，亲密度+" + pillAff, "success");
+    UI.closeModal();
+    setTimeout(()=>UI.showPanel('companion'), 100);
+  },
+
+  // ===== 队伍系统 =====
+  addToParty(memberId) {
+    const s = this.state;
+    if (!s.party) s.party = [];
+    if (s.party.length >= 3) {
+      UI.toast("队伍已满（最多3人）！", "danger");
+      return;
+    }
+    if (s.party.includes(memberId)) return;
+    s.party.push(memberId);
+    // 同步到 travelCompanion（兼容旧系统，取第一个成员）
+    if (s.party.length === 1) s.travelCompanion = memberId;
+    // 如果是普通NPC，验证存在
+    if (!memberId.startsWith('comp_')) {
+      const npc = s.npcList ? s.npcList.find(n => n.id === memberId) : null;
+      if (npc) UI.toast(npc.name + "加入队伍！", "success");
+    } else {
+      const compId = memberId.replace('comp_', '');
+      const comp = COMPANIONS[compId];
+      if (comp) UI.toast(comp.name + "加入队伍！", "success");
+    }
+    UI.closeModal();
+    setTimeout(()=>UI.showPanel('companion'), 100);
+  },
+
+  removeFromParty(memberId) {
+    const s = this.state;
+    if (!s.party) s.party = [];
+    const idx = s.party.indexOf(memberId);
+    if (idx >= 0) s.party.splice(idx, 1);
+    // 同步 travelCompanion
+    if (s.travelCompanion === memberId) {
+      s.travelCompanion = s.party.length > 0 ? s.party[0] : null;
+    }
+    UI.toast("已离开队伍", "info");
+    UI.closeModal();
+    setTimeout(()=>UI.showPanel('companion'), 100);
+  },
+
+  // ===== 队伍面板 =====
+  showPartyPanel() {
+    const s = this.state;
+    if (!s.party) s.party = [];
+    let html = '<div class="modal-section"><div class="modal-section-title">🚶 队伍成员（最多3人）</div>';
+    if (s.party.length === 0) {
+      html += '<div style="color:var(--text-dim);text-align:center;padding:10px;">队伍暂无成员<br><span style="font-size:0.85em;">在道侣面板中可将道侣加入队伍，同行时自动参战</span></div>';
+    } else {
+      s.party.forEach(memberId => {
+        if (memberId.startsWith('comp_')) {
+          const compId = memberId.replace('comp_', '');
+          const comp = COMPANIONS[compId];
+          if (!comp) return;
+          const cData = s.companionData[compId] || {level:1, exp:0, affinity:0};
+          const levelMult = 1 + (cData.level - 1) * COMPANION_LEVEL_DATA.atkGrowth;
+          const finalAtk = Math.floor(comp.atkBonus * levelMult);
+          const finalDef = Math.floor(comp.defBonus * (1 + (cData.level - 1) * COMPANION_LEVEL_DATA.defGrowth));
+          html += '<div class="modal-item-row" style="flex-direction:column;align-items:flex-start;">';
+          html += '<div style="width:100%;display:flex;justify-content:space-between;align-items:center;">';
+          html += '<div><div style="color:var(--gold-bright);">🚶 ' + comp.name + '</div>';
+          html += '<div class="modal-item-desc">Lv.' + cData.level + ' | 亲密度：' + cData.affinity + '/100</div>';
+          html += '<div class="modal-item-stats">攻：+' + finalAtk + ' | 防：+' + finalDef + ' | ' + comp.special + '</div>';
+          html += '</div><button class="btn-combat" style="font-size:0.7em;border-color:var(--crimson);color:var(--crimson-bright);" onclick="Game.removeFromParty(\'' + memberId + '\')">离开</button>';
+          html += '</div></div>';
+        } else {
+          const npc = s.npcList ? s.npcList.find(n => n.id === memberId) : null;
+          if (!npc) return;
+          html += '<div class="modal-item-row" style="flex-direction:column;align-items:flex-start;">';
+          html += '<div style="width:100%;display:flex;justify-content:space-between;align-items:center;">';
+          html += '<div><div style="color:var(--gold-bright);">🚶 ' + npc.name + '</div>';
+          html += '<div class="modal-item-desc">好感：' + (npc.mood || 0) + ' | 修为：' + (npc.cultName || '凡人') + '</div>';
+          html += '<div class="modal-item-stats">攻：' + (npc.atk || 0) + ' | 防：' + (npc.def || 0) + '</div>';
+          html += '</div><button class="btn-combat" style="font-size:0.7em;border-color:var(--crimson);color:var(--crimson-bright);" onclick="Game.removeFromParty(\'' + memberId + '\')">离开</button>';
+          html += '</div></div>';
+        }
+      });
+    }
+    html += '</div>';
+    // 可加入队伍的候选
+    html += '<div class="modal-section"><div class="modal-section-title">可加入队伍</div>';
+    let hasCandidate = false;
+    // 剧情道侣
+    s.companions.forEach(c => {
+      if (s.party.includes('comp_' + c)) return;
+      hasCandidate = true;
+      const comp = COMPANIONS[c];
+      html += '<div class="modal-item-row" style="cursor:pointer;" onclick="Game.addToParty(\'comp_' + c + '\')"><div>';
+      html += '<div style="color:var(--gold-bright);">💕 ' + comp.name + '</div>';
+      html += '<div class="modal-item-desc">道侣 | ' + comp.special + '</div>';
+      html += '</div></div>';
+    });
+    // 世界NPC道侣
+    (s.spouses || []).forEach(npcId => {
+      if (s.party.includes(npcId)) return;
+      const npc = s.npcList ? s.npcList.find(n => n.id === npcId) : null;
+      if (!npc) return;
+      hasCandidate = true;
+      html += '<div class="modal-item-row" style="cursor:pointer;" onclick="Game.addToParty(\'' + npcId + '\')"><div>';
+      html += '<div style="color:var(--gold-bright);">💕 ' + npc.name + '</div>';
+      html += '<div class="modal-item-desc">道侣 | 好感：' + (npc.mood || 0) + '</div>';
+      html += '</div></div>';
+    });
+    // 同区域好感足够的普通NPC
+    if (s.npcList) {
+      const TRAVEL_AFF = (typeof TRAVEL_TOGETHER_AFFINITY !== 'undefined') ? TRAVEL_TOGETHER_AFFINITY : 60;
+      s.npcList.forEach(n => {
+        if (s.party.includes(n.id) || (s.spouses && s.spouses.includes(n.id))) return;
+        if (n.isAlive && (n.mood || 0) >= TRAVEL_AFF && !n.isChild && n.area === s.location) {
+          hasCandidate = true;
+          html += '<div class="modal-item-row" style="cursor:pointer;" onclick="Game.addToParty(\'' + n.id + '\')"><div>';
+          html += '<div style="color:var(--gold-bright);">' + n.name + '</div>';
+          html += '<div class="modal-item-desc">好感：' + n.mood + ' | ' + (n.cultName || '凡人') + '</div>';
+          html += '</div></div>';
+        }
+      });
+    }
+    if (!hasCandidate) {
+      html += '<div style="color:var(--text-dim);text-align:center;padding:8px;">暂无可加入队伍的伙伴</div>';
+    }
+    html += '</div>';
+    UI.showModalBody(html, '<button class="btn-combat" onclick="UI.closeModal()">关闭</button>');
+  },
+
   // ===== 仙蛊养成 =====
   guLevelUp(guId) {
     const s = this.state;
@@ -1987,6 +2779,8 @@ const Game = {
   advanceDays(days) {
     const s = this.state;
     if (!this.farmSlots) this.farmSlots = [null, null, null, null];
+    // 推进游戏内日期（同步存档）
+    s.gameDay = (s.gameDay || 1) + days;
     // 灵田生长
     this.farmSlots.forEach((slot, i) => {
       if (slot && slot.growDays < slot.growTime) {
@@ -1996,6 +2790,7 @@ const Game = {
     s.farmSeeds = this.farmSlots;
     // 每月拍卖会
     this.gameMonth += Math.floor(days / 30);
+    s.gameMonth = this.gameMonth;
     // 扩展系统时间推进
     if (typeof WorldSystem !== 'undefined' && WorldSystem.advanceTime) {
       WorldSystem.advanceTime(days * 24);
@@ -2003,6 +2798,45 @@ const Game = {
     // 灵山建筑生长
     if (typeof WorldSystem !== 'undefined' && WorldSystem.advanceMountainGrowth) {
       WorldSystem.advanceMountainGrowth(days);
+    }
+    // 扩展4：剧情NPC修为成长（随着天数推进提升境界）
+    if (typeof WorldSystem !== 'undefined' && WorldSystem.ageStoryNPCs) {
+      WorldSystem.ageStoryNPCs(s, days);
+    }
+    // ===== 世界演化：NPC自主行为（修炼/突破/复仇/衰老）=====
+    if (s.npcList && typeof SocialSystem !== 'undefined') {
+      var evolvedCount = 0;
+      for (var i = 0; i < s.npcList.length; i++) {
+        var npc = s.npcList[i];
+        if (!npc.isAlive) continue;
+        // NPC年龄增长
+        npc.age = (npc.age || 20) + Math.floor(days / 30);
+        // 寿元耗尽则死亡
+        if (npc.age > (npc.lifespan || 100) && Math.random() < 0.3) {
+          npc.isAlive = false;
+          npc.deathCause = '寿元耗尽';
+          continue;
+        }
+        // 每隔较长时间触发一次自主行为
+        if (days >= 7 && Math.random() < 0.15) {
+          var action = SocialSystem.npcAutoAction(npc, s);
+          if (action && action.message) evolvedCount++;
+        }
+      }
+    }
+    // ===== 修行债务定期发作（每7天检查一次）=====
+    if (typeof CultivationDebt !== 'undefined' && s.gameDay % 7 === 0) {
+      var consequences = CultivationDebt.checkDebtConsequences(s);
+      for (var ci = 0; ci < consequences.length; ci++) {
+        var c = consequences[ci];
+        UI.toast(c.msg, "danger");
+        if (c.effect && c.effect.hp) {
+          s.hp = Math.max(1, s.hp + c.effect.hp);
+        }
+        if (c.effect && c.effect.heartDemon) {
+          s.heartDemon = (s.heartDemon || 0) + c.effect.heartDemon;
+        }
+      }
     }
   },
   
@@ -2091,14 +2925,16 @@ const Game = {
       // 遇到敌人
       const enemyKey = area.enemies[Math.floor(Math.random() * area.enemies.length)];
       const enemy = ENEMIES[enemyKey];
+      if (!enemy) { UI.toast("遭遇未知敌人，已避开。", "danger"); return; }
       // 难度缩放
       const scaledEnemy = {...enemy};
       const scale = 1 + s.cultLevel * 0.15;
       scaledEnemy.hp = Math.floor(enemy.hp * scale);
       scaledEnemy.atk = Math.floor(enemy.atk * scale);
       scaledEnemy.def = Math.floor(enemy.def * scale);
-      scaledEnemy.exp = Math.floor(enemy.exp * (1 + area.expBonus / 100));
-      scaledEnemy.stone = Math.floor(enemy.stone * (1 + area.stoneBonus / 100));
+      // 经验/灵石不在探索时预缩放，由 wildVictory 统一应用区域加成（避免双重缩放）
+      scaledEnemy.exp = enemy.exp;
+      scaledEnemy.stone = enemy.stone;
       scaledEnemy.name = enemy.name;
       
       this.combatState = {
@@ -2127,7 +2963,7 @@ const Game = {
   },
   
   rollRandomEvent() {
-    const totalWeight = RANDOM_EVENTS.reduce((s, e) => s + e.weight, 0);
+    const totalWeight = RANDOM_EVENTS.reduce((acc, e) => acc + e.weight, 0);
     let roll = Math.random() * totalWeight;
     for (const event of RANDOM_EVENTS) {
       roll -= event.weight;
@@ -2273,27 +3109,62 @@ const Game = {
   wildVictory() {
     const cs = this.combatState;
     const s = this.state;
-    s.battlesWon++;
+    // 兜底：若 combatState 已置空（理论上 combatVictory 对 isWild 不再清空），使用 s.currentWilderness 或 s.location
+    const areaKey = (cs && cs.areaKey) || s.currentWilderness || s.location;
+    const enemy = cs ? cs.enemy : null;
+    s.battlesWon = (s.battlesWon || 0) + 1;
     s.wildBattlesWon = (s.wildBattlesWon || 0) + 1;
     if (s.wildBattlesWon >= 50) this.giveAchievement("wilderness_master");
     if (s.battlesWon === 1) this.giveAchievement("first_kill");
-    
-    const area = WILDERNESS[cs.areaKey];
-    const expGain = Math.floor(cs.enemy.exp * (1 + (area ? area.expBonus : 0) / 100));
-    const stoneGain = Math.floor(cs.enemy.stone * (1 + (area ? area.stoneBonus : 0) / 100));
-    this.gainExp(expGain);
-    s.spiritStones += stoneGain;
-    
+
+    const area = WILDERNESS[areaKey];
+    let expGain = 0, stoneGain = 0;
+    let enemyName = "敌人";
+    if (enemy) {
+      expGain = Math.floor(enemy.exp * (1 + (area ? area.expBonus : 0) / 100));
+      stoneGain = Math.floor(enemy.stone * (1 + (area ? area.stoneBonus : 0) / 100));
+      enemyName = enemy.name;
+      this.gainExp(expGain);
+      s.spiritStones += stoneGain;
+    }
+
     let texts = [
-      {type:"narration",content:"你击败了" + cs.enemy.name + "！"},
-      {type:"reward",content:"获得" + expGain + "经验，" + stoneGain + "灵石。"},
+      {type:"narration",content:"你击败了" + enemyName + "！"},
     ];
-    if (cs.enemy.drop && Math.random() < (cs.enemy.dropRate || 0.2)) {
-      this.addItem(cs.enemy.drop, 1);
-      texts.push({type:"reward",content:"获得掉落：" + ITEMS[cs.enemy.drop].name});
+    if (enemy) {
+      texts.push({type:"reward",content:"获得" + expGain + "经验，" + stoneGain + "灵石。"});
+    }
+    // 掉落（支持 ITEMS / GU_WORMS / TECHNIQUES）
+    if (enemy && enemy.drop && Math.random() < (enemy.dropRate || 0.2)) {
+      const dropId = enemy.drop;
+      if (ITEMS[dropId]) {
+        this.addItem(dropId, 1);
+        texts.push({type:"reward",content:"获得掉落：" + ITEMS[dropId].name});
+      } else if (GU_WORMS[dropId]) {
+        if (!s.guWorms.includes(dropId)) {
+          s.guWorms.push(dropId);
+          s.guWormLevels[dropId] = { level: 1, exp: 0 };
+          texts.push({type:"reward",content:"获得仙蛊：" + GU_WORMS[dropId].name});
+          UI.toast("✨ 获得仙蛊：" + GU_WORMS[dropId].name + "！", "gold");
+        } else {
+          s.spiritStones += 200;
+          texts.push({type:"reward",content:"仙蛊" + GU_WORMS[dropId].name + "已拥有，折算200灵石"});
+        }
+      } else if (TECHNIQUES[dropId]) {
+        if (!s.techniques.includes(dropId)) {
+          s.techniques.push(dropId);
+          texts.push({type:"reward",content:"学会功法：" + TECHNIQUES[dropId].name});
+          UI.toast("✨ 学会功法：" + TECHNIQUES[dropId].name + "！", "gold");
+        } else {
+          s.spiritStones += 300;
+          texts.push({type:"reward",content:"功法" + TECHNIQUES[dropId].name + "已学会，折算300灵石"});
+        }
+      } else {
+        console.warn("[wildVictory] 未知掉落：", dropId);
+      }
     }
     texts.push({type:"narration",content:"你可以继续探索或返回。"});
-    
+
     UI.hideCombat();
     this.combatState = null;
     UI.renderNarrative(texts);
@@ -2303,11 +3174,13 @@ const Game = {
     ]);
     UI.updateAll();
   },
-  
+
   wildDefeat() {
     const s = this.state;
     s.hp = Math.floor(s.maxHp * 0.3);
     s.mp = Math.floor(s.maxMp * 0.3);
+    if (s.hp <= 0) s.hp = 1;
+    if (s.mp <= 0) s.mp = 1;
     UI.hideCombat();
     this.combatState = null;
     UI.renderNarrative([
@@ -2335,15 +3208,27 @@ const Game = {
     else if (stage >= 2) s.location = "虚天殿";
     else if (stage >= 1) s.location = "乱星海";
     else s.location = "天南坊市城";
-    
+
     UI.renderNarrative([
       {type:"narration",content:"你返回了" + s.location + "。"},
       {type:"system_msg",content:"你可以继续修炼、探索野外、参加拍卖会等。"},
     ]);
-    UI.renderChoices([
+    var choices = [
       {text:"修炼打坐", next:"cultivate_meditate", effect:{}},
       {text:"查看菜单", next:"_menu", effect:{}},
-    ]);
+    ];
+    // 支线任务动态交付：大师兄的千年药草（玩家持有千年药草且任务活跃时显示）
+    if (s.storyQuests && s.storyQuests.some(q => q.id === "sq_zhangtie_herb")) {
+      var hasHerb = s.inventory.some(i => i.id === "thousand_year_ginseng" && i.count >= 1);
+      if (hasHerb) {
+        choices.push({text:"🌿 找张铁交付千年药草", next:"side_quest_zhangtie_deliver", effect:{}});
+      }
+    }
+    // 支线任务动态交付：失踪的师妹（任务活跃时显示）
+    if (s.storyQuests && s.storyQuests.some(q => q.id === "sq_missing_sister")) {
+      choices.push({text:"👧 寻找失踪的师妹陆云", next:"side_quest_missing_sister_complete", effect:{}});
+    }
+    UI.renderChoices(choices);
     UI.updateAll();
   },
   
@@ -2383,7 +3268,9 @@ const Game = {
         const gradeNames = ["","凡品","灵品","宝品","仙品","至宝"];
         const gradeColors = ["","#aaa","var(--jade-bright)","var(--blue-spirit)","var(--purple-spirit)","var(--gold-bright)"];
         html += '<div class="modal-item-row"><div>';
-        html += '<div style="color:' + gradeColors[item.grade] + ';">' + item.name + (inv.count > 1 ? ' ×' + inv.count : '') + ' <span style="font-size:0.8em;">[' + gradeNames[item.grade] + ']</span></div>';
+        var gradeLabel = (gradeNames[item.grade] || '');
+        var gradeColor = (gradeColors[item.grade] || 'var(--text-main)');
+        html += '<div style="color:' + gradeColor + ';">' + item.name + (inv.count > 1 ? ' ×' + inv.count : '') + (gradeLabel ? ' <span style="font-size:0.8em;">[' + gradeLabel + ']</span>' : '') + '</div>';
         html += '<div class="modal-item-desc">' + item.desc + '</div>';
         html += '<div class="modal-item-stats">';
         if (item.atk) html += '攻击+' + item.atk + ' ';
