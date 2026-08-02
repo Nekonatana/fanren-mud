@@ -7,6 +7,9 @@ Object.assign(WorldSystem, {
     if (!state.activeTitle) state.activeTitle = null;
     if (!state.sectMembership) state.sectMembership = null; // {sectId, position, contribution, joinedDays}
     if (!state.ownSect) state.ownSect = null; // {name, members:[{npcId,role}], contribution, reputation}
+    if (!state.ownSectId) state.ownSectId = null; // 字符串宗门名
+    if (!state.ownSectFounded) state.ownSectFounded = false;
+    if (!state.ownSectMembers) state.ownSectMembers = [];
     if (!state.reputation) state.reputation = 0;
     if (!state.poachedNPCs) state.poachedNPCs = 0;
     if (!state.deceivedCount) state.deceivedCount = 0;
@@ -72,7 +75,8 @@ Object.assign(WorldSystem, {
       // 生成父母（每个NPC都有父母）
       var npcAge = npc.age || (Math.floor(Math.random() * 80) + 16);
       var parentAgeDiff = 20 + Math.floor(Math.random() * 6); // 20-25岁
-      var npcStage = npc.cultLevel >= 0 ? CULT_LEVELS[npc.cultLevel].stage : 0;
+      var npcCultIdx = (typeof npc.cultLevel === 'number' && npc.cultLevel >= 0 && npc.cultLevel < CULT_LEVELS.length) ? npc.cultLevel : 0;
+      var npcStage = CULT_LEVELS[npcCultIdx] ? CULT_LEVELS[npcCultIdx].stage : 0;
       // 父亲
       var fatherSurname = NPC_SURNAMES[Math.floor(Math.random() * NPC_SURNAMES.length)];
       var fatherGiven = NPC_GIVEN_NAMES_M[Math.floor(Math.random() * NPC_GIVEN_NAMES_M.length)];
@@ -144,15 +148,15 @@ Object.assign(WorldSystem, {
       if (Math.random() < 0.40) {
         const sectKeys = Object.keys(SECTS_AND_FAMILIES);
         const sect = SECTS_AND_FAMILIES[sectKeys[Math.floor(Math.random() * sectKeys.length)]];
-        if (CULT_LEVELS[npc.cultLevel].stage >= sect.reqStage) {
+        if (sect && npcStage >= sect.reqStage) {
           npc.sectId = sectKeys[Math.floor(Math.random() * sectKeys.length)];
           npc.sectName = sect.name;
           // 根据修为决定职位
-          if (CULT_LEVELS[npc.cultLevel].stage >= 5) npc.sectRole = "太上长老";
-          else if (CULT_LEVELS[npc.cultLevel].stage >= 4) npc.sectRole = "护法长老";
-          else if (CULT_LEVELS[npc.cultLevel].stage >= 3) npc.sectRole = "内门执事";
-          else if (CULT_LEVELS[npc.cultLevel].stage >= 2) npc.sectRole = "内门弟子";
-          else if (CULT_LEVELS[npc.cultLevel].stage >= 1) npc.sectRole = "外门执事";
+          if (npcStage >= 5) npc.sectRole = "太上长老";
+          else if (npcStage >= 4) npc.sectRole = "护法长老";
+          else if (npcStage >= 3) npc.sectRole = "内门执事";
+          else if (npcStage >= 2) npc.sectRole = "内门弟子";
+          else if (npcStage >= 1) npc.sectRole = "外门执事";
           else npc.sectRole = "外门弟子";
         }
       }
@@ -302,7 +306,7 @@ Object.assign(WorldSystem, {
     }
 
     // 检查性别
-    if (!npc.isFemale !== !s.isFemale) {
+    if (npc.isFemale === s.isFemale) {
       UI.renderNarrative([
         {type:"danger",content:"只能对异性NPC使用此手段。"},
       ]);
@@ -314,14 +318,15 @@ Object.assign(WorldSystem, {
     }
 
     const spouseInfo = npc.socialNetwork.spouse;
-    const successChance = 0.7 + (npc.mood - 100) * 0.01 + (npc.loyalty < 50 ? 0.2 : 0);
+    var successChance = 0.7 + (npc.mood - 100) * 0.01 + (npc.loyalty < 50 ? 0.2 : 0);
+    successChance = Math.max(0, Math.min(1, successChance));
     const success = Math.random() < successChance;
 
     if (success) {
       // 成功哄骗
       npc.hasSpouse = false;
       npc.socialNetwork.spouse = null;
-      npc.loyalty = Math.max(-100, npc.loyalty - 30);
+      npc.loyalty = Math.max(-100, (typeof npc.loyalty === 'number' ? npc.loyalty : 100) - 30);
       s.deceivedCount = (s.deceivedCount || 0) + 1;
 
       // 创建被断绝关系的NPC（成为仇敌/伏击者）
@@ -370,7 +375,7 @@ Object.assign(WorldSystem, {
     } else {
       // 哄骗失败
       npc.mood = Math.max(0, npc.mood - 30);
-      npc.loyalty = Math.max(-100, npc.loyalty - 10);
+      npc.loyalty = Math.max(-100, (typeof npc.loyalty === 'number' ? npc.loyalty : 100) - 10);
       UI.renderNarrative([
         {type:"danger",content:"你的哄骗失败了！"},
         {type:"dialogue",content:"「你这是何意？！我与道侣情深意重，岂会受你蛊惑！」" + npc.name + "怒斥道。"},
@@ -532,7 +537,7 @@ Object.assign(WorldSystem, {
     // 检查条件
     if (!npc.hasSpouse && (npc.loyalty === undefined || npc.loyalty >= 100)) { UI.toast(npc.name + "没有道侣，无法秘密双修。", "danger"); return; }
     if (npc.loyalty > 50) { UI.toast(npc.name + "忠贞度过高，无法秘密双修。", "danger"); return; }
-    if (!npc.isFemale !== !s.isFemale) { UI.toast("只能与异性双修。", "danger"); return; }
+    if (npc.isFemale === s.isFemale) { UI.toast("只能对异性NPC使用此手段", "danger"); return; }
     if (npc.mood < 60) { UI.toast("好感度不足60。", "danger"); return; }
 
     // 执行秘密双修
@@ -1150,7 +1155,8 @@ Object.assign(WorldSystem, {
     }
 
     // 其他任务直接完成（带随机难度）
-    const successChance = 0.9 - task.difficulty * 0.1;
+    var successChance = 0.9 - task.difficulty * 0.1;
+    successChance = Math.max(0, Math.min(1, successChance));
     const success = Math.random() < successChance;
 
     if (success) {
@@ -1301,6 +1307,9 @@ Object.assign(WorldSystem, {
       reputation: 100,
       level: 1,
     };
+    s.ownSectId = sectName;
+    s.ownSectFounded = true;
+    if (!s.ownSectMembers) s.ownSectMembers = [];
 
     UI.closeModal();
     UI.renderNarrative([
@@ -1350,7 +1359,7 @@ Object.assign(WorldSystem, {
         const genderStr = npc.isFemale ? "女" : "男";
         const cultStr = npc.cultName || "凡人";
         html += '<div class="modal-item-row" style="cursor:pointer;" onclick="UI.closeModal();WorldSystem.inviteNPCToSect(\'' + npc.id + '\')"><div>';
-        html += '<div style="color:var(--gold-bright);">' + npc.title + npc.name + ' <span style="font-size:0.8em;color:var(--text-dim);">[' + genderStr + '·' + cultStr + '·好感' + npc.mood + ']</span></div>';
+        html += '<div style="color:var(--gold-bright);">' + npc.title + npc.name + ' <span style="font-size:0.8em;color:var(--text-dim);">[' + genderStr + '·' + cultStr + '·好感' + (npc.mood >= 0 ? npc.mood : 50) + ']</span></div>';
         html += '<div class="modal-item-desc">' + (npc.sectName ? '原属：' + npc.sectName : '散修') + '</div>';
         html += '</div></div>';
       });
@@ -1365,8 +1374,9 @@ Object.assign(WorldSystem, {
         const npc = s.npcList.find(n => n.id === m.npcId);
         if (npc) {
           html += '<div class="modal-item-row"><div>';
-          html += '<div style="color:var(--gold-bright);">' + npc.title + npc.name + ' <span style="font-size:0.8em;color:var(--jade-bright);">[' + m.role + ']</span></div>';
-          html += '<div class="modal-item-desc">' + npc.cultName + '·好感' + npc.mood + '</div>';
+          var sectRole = m.role ? '[' + m.role + ']' : '';
+          html += '<div style="color:var(--gold-bright);">' + npc.title + npc.name + (sectRole ? ' <span style="font-size:0.8em;color:var(--jade-bright);">' + sectRole + '</span>' : '') + '</div>';
+          html += '<div class="modal-item-desc">' + (npc.cultName || '凡人') + '·好感' + (npc.mood >= 0 ? npc.mood : 0) + '</div>';
           html += '</div></div>';
         }
       });
@@ -1386,7 +1396,8 @@ Object.assign(WorldSystem, {
     if (npc.mood < 80) { UI.toast("好感度不足80，无法邀请。", "danger"); return; }
 
     // 成功率基于好感度
-    const successChance = 0.5 + (npc.mood - 80) * 0.02;
+    var successChance = 0.5 + (npc.mood - 80) * 0.02;
+    successChance = Math.max(0, Math.min(1, successChance));
     const success = Math.random() < successChance;
 
     if (success) {
@@ -1414,6 +1425,8 @@ Object.assign(WorldSystem, {
       else if (stage >= 2) role = "内门弟子";
 
       s.ownSect.members.push({npcId: npcId, role: role});
+      if (!s.ownSectMembers) s.ownSectMembers = [];
+      if (!s.ownSectMembers.includes(npcId)) s.ownSectMembers.push(npcId);
       s.ownSect.reputation += 20;
       npc.mood = Math.min(100, npc.mood + 5);
 
@@ -1519,6 +1532,7 @@ Object.assign(WorldSystem, {
       texts.push({type:"narration",content:"你以情动人，劝说" + npc.name + "加入你的宗门……"});
     }
 
+    successChance = Math.max(0, Math.min(1, successChance));
     const success = Math.random() < successChance;
 
     if (success) {
@@ -1534,6 +1548,8 @@ Object.assign(WorldSystem, {
       else if (stage >= 2) role = "内门弟子";
 
       s.ownSect.members.push({npcId: npcId, role: role});
+      if (!s.ownSectMembers) s.ownSectMembers = [];
+      if (!s.ownSectMembers.includes(npcId)) s.ownSectMembers.push(npcId);
       s.ownSect.reputation += 30;
       s.poachedNPCs = (s.poachedNPCs || 0) + 1;
       s.reputation = (s.reputation || 0) + 10;
@@ -1631,8 +1647,9 @@ Object.assign(WorldSystem, {
     if (sn.godparents && sn.godparents.length > 0) {
       html += '<div class="modal-section-title" style="margin-top:8px;">🙏 义父母</div>';
       sn.godparents.forEach(gp => {
+        var relTag = gp.relation ? '[' + gp.relation + ']' : '';
         html += '<div class="modal-item-row"><div>';
-        html += '<div style="color:var(--purple-spirit);">' + gp.name + ' <span style="font-size:0.8em;color:var(--text-dim);">[' + gp.relation + ']</span></div>';
+        html += '<div style="color:var(--purple-spirit);">' + gp.name + (relTag ? ' <span style="font-size:0.8em;color:var(--text-dim);">' + relTag + '</span>' : '') + '</div>';
         html += '</div></div>';
       });
     }
@@ -1642,8 +1659,9 @@ Object.assign(WorldSystem, {
       html += '<div class="modal-section-title" style="margin-top:8px;">👨‍👩‍👧‍👦 亲友</div>';
       sn.familyMembers.forEach(rel => {
         const genderStr = rel.isFemale ? "女" : "男";
+        var famTag = (rel.relation || '亲友') + '·' + genderStr;
         html += '<div class="modal-item-row"><div>';
-        html += '<div style="color:var(--text-main);">' + rel.name + ' <span style="font-size:0.8em;color:var(--text-dim);">[' + rel.relation + '·' + genderStr + ']</span></div>';
+        html += '<div style="color:var(--text-main);">' + rel.name + ' <span style="font-size:0.8em;color:var(--text-dim);">[' + famTag + ']</span></div>';
         html += '</div></div>';
       });
     }
@@ -1655,9 +1673,10 @@ Object.assign(WorldSystem, {
         var aliveStr = rel.isAlive ? "" : " <span style='color:var(--text-dim);font-size:0.8em;'>(已故)</span>";
         var cultStr = rel.cultLevel >= 0 ? CULT_LEVELS[rel.cultLevel].name : "凡人";
         var genderStr = rel.isFemale ? "女" : "男";
+        var relTag = (rel.relation || '亲戚') + '·' + genderStr;
         html += '<div class="modal-item-row"><div>';
-        html += '<div style="color:' + (rel.isAlive ? 'var(--text-main)' : 'var(--text-dim)') + ';">' + rel.name + aliveStr + ' <span style="font-size:0.8em;color:var(--text-dim);">[' + rel.relation + '·' + genderStr + ']</span></div>';
-        html += '<div class="modal-item-desc">' + rel.age + '岁 | ' + cultStr + '</div>';
+        html += '<div style="color:' + (rel.isAlive ? 'var(--text-main)' : 'var(--text-dim)') + ';">' + rel.name + aliveStr + ' <span style="font-size:0.8em;color:var(--text-dim);">[' + relTag + ']</span></div>';
+        html += '<div class="modal-item-desc">' + (rel.age >= 0 ? rel.age : '?') + '岁 | ' + cultStr + '</div>';
         html += '</div></div>';
       });
     }
