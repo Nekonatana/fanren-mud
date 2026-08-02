@@ -442,7 +442,9 @@ Object.assign(WorldSystem, {
     mainQuestChoices.forEach(mc => choices.push(mc));
     
     if (townKey) {
-      choices.push({text:"进入" + TOWNS[townKey].name, next:"_town_enter_" + townKey, effect:{}});
+      // 城镇地点：直接进入城镇内部，保证所有路径选项一致
+      this.enterTown(townKey);
+      return;
     }
 
     // 前往各处（场所系统）
@@ -495,6 +497,96 @@ Object.assign(WorldSystem, {
       choices.push({text:"查看更多NPC（共" + areaNPCs.length + "人）", next:"_npc_list_" + locKey, effect:{}});
     }
     
+    choices.push({text:"打开地图", next:"_open_map", effect:{}});
+    choices.push({text:"返回", next:"_wild_return", effect:{}});
+    UI.renderChoices(choices);
+    UI.updateAll();
+  },
+
+  // ===== 仅渲染地点面板（不消耗旅行时间，不做状态更新），
+  // 供placeBack/副本返回/荒野返回等场景使用，保证与地图前往的选项完全一致 =====
+  showLocationPanel(locKey) {
+    const s = Game.state;
+    const loc = WORLD_MAP[locKey];
+    if (!loc) return;
+
+    // 确保基础状态初始化（安全幂等）
+    this.initWorldState(s);
+    if (typeof this.initExpand4State === 'function') this.initExpand4State(s);
+    if (typeof this.initExpand5State === 'function') this.initExpand5State(s);
+    // 确保该区域有足够的NPC
+    this.ensureAreaNPCs(s, locKey);
+    // 分配NPC到场所
+    if (typeof this.assignAreaPlaces === 'function') this.assignAreaPlaces(s, locKey);
+
+    const townKey = Object.keys(TOWNS).find(t => TOWNS[t].region === locKey);
+    let texts = [
+      {type:"narration",content:"你来到了" + loc.name + "。"},
+      {type:"narration",content:loc.desc},
+    ];
+    const areaNPCs = this.getAreaNPCs(s, locKey);
+    if (areaNPCs.length > 0) {
+      texts.push({type:"system_msg",content:"此地约有" + areaNPCs.length + "人活动。"});
+    }
+    UI.renderNarrative(texts);
+
+    const choices = [];
+    if (typeof this.getMainQuestProgressionChoice === 'function') {
+      const progChoice = this.getMainQuestProgressionChoice(locKey);
+      if (progChoice) choices.push(progChoice);
+    }
+    const pmainChoice = this.getPermanentMainChoice();
+    if (pmainChoice) choices.push(pmainChoice);
+    const mainQuestChoices = this.getMainQuestChoices(locKey);
+    mainQuestChoices.forEach(mc => choices.push(mc));
+
+    if (townKey) {
+      choices.push({text:"进入" + TOWNS[townKey].name, next:"_town_enter_" + townKey, effect:{}});
+    }
+
+    if (typeof this.getLocationPlaces === 'function' && this.getLocationPlaces(locKey).length > 0) {
+      choices.push({text:"🏛️ 前往各处", next:"_place_panel_" + locKey, effect:{}});
+    }
+
+    if (typeof LOCATION_DUNGEON_DEFS !== 'undefined' && LOCATION_DUNGEON_DEFS[locKey]) {
+      const dungeon = LOCATION_DUNGEON_DEFS[locKey];
+      const cultStage = CULT_LEVELS[s.cultLevel].stage;
+      if (cultStage >= dungeon.reqStage) {
+        choices.push({text:"🎪 前往副本：" + dungeon.name, next:"_loc_dungeon_enter_" + locKey, effect:{}});
+      }
+    }
+
+    if (typeof this.getLocationQuests === 'function') {
+      const quests = this.getLocationQuests(locKey);
+      const activeQuests = (s.activeLocQuests || []).filter(q => q.locKey === locKey);
+      if (quests.length > 0 || activeQuests.length > 0) {
+        choices.push({text:"📋 查看任务", next:"_loc_quest_panel_" + locKey, effect:{}});
+      }
+    }
+
+    if (typeof this.showNPCLocator === 'function') {
+      choices.push({text:"🔍 寻找NPC", next:"_npc_locator_", effect:{}});
+    }
+
+    choices.push({text:"🚂 前往驿站（快速移动）", next:"_carriage_panel", effect:{}});
+
+    if (typeof this.showSectRankingPanel === 'function') {
+      choices.push({text:"🏯 宗门/家族排名", next:"_sect_ranking_panel", effect:{}});
+    }
+    if (loc.type === "wild" || loc.type === "sea" || loc.type === "ruins" || loc.type === "danger" || loc.type === "warzone") {
+      choices.push({text:"探索" + loc.name, next:"_wild_explore_" + locKey, effect:{}});
+    }
+
+    const availableNPCs = areaNPCs.slice(0, 3);
+    availableNPCs.forEach(npc => {
+      const genderStr = npc.isFemale ? "女" : "男";
+      const cultStr = npc.cultLevel !== undefined ? npc.cultName : "凡人";
+      choices.push({text:"与" + npc.name + "交谈（" + genderStr + "·" + cultStr + "）", next:"_npc_talk_" + npc.id, effect:{}});
+    });
+    if (areaNPCs.length > 3) {
+      choices.push({text:"查看更多NPC（共" + areaNPCs.length + "人）", next:"_npc_list_" + locKey, effect:{}});
+    }
+
     choices.push({text:"打开地图", next:"_open_map", effect:{}});
     choices.push({text:"返回", next:"_wild_return", effect:{}});
     UI.renderChoices(choices);
