@@ -133,6 +133,7 @@ const TECHNIQUES = {
   "spirit_shield":{name:"灵力护盾",type:"defense",desc:"灵力化为护盾，吸收伤害。",reqStage:1,shield:200,mpCost:30},
   "heaven_escape":{name:"天遁术",type:"utility",desc:"瞬间移动，可逃离战斗。",reqStage:1,mpCost:50,effect:"escape"},
   "nine_transformation":{name:"九转玄功",type:"utility",desc:"炼体奇术，大幅增强肉身。",reqStage:2,hpBonus:500,atkBonus:30,defBonus:30},
+  "iron_bone_art":{name:"铁骨功",type:"defense",desc:"张铁传授的炼体功法，铁骨铮铮，大幅增强防御与气血。",reqStage:0,defBonus:40,hpBonus:200},
   
   // 特殊
   "big_day":{name:"大衍决",type:"special",desc:"推演天机之术，提升悟性与机缘。",reqStage:1,compBonus:3,luckBonus:3},
@@ -345,6 +346,7 @@ const COMPANION_LEVEL_DATA = {
     {id:"gift",name:"赠送礼物",affinityGain:8,cost:100,desc:"赠送灵石礼物，大幅提升亲密度。"},
     {id:"practice",name:"双修",affinityGain:5,expGain:200,desc:"与道侣双修，提升修为和亲密度。"},
     {id:"spar",name:"切磋",affinityGain:4,expGain:100,desc:"与道侣切磋武艺。"},
+    {id:"gift_pill",name:"赠送丹药",affinityGain:0,desc:"赠送修为丹药，大幅提升道侣实力（打开丹药选择面板）。"},
   ],
 };
 
