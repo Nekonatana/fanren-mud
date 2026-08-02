@@ -521,7 +521,7 @@ Object.assign(WorldSystem, {
     this.advanceTime(24);
 
     const relation = s.sectRelations[sectId] || 0;
-    const isOwnSect = s.ownSect === sectId;
+    const isOwnSect = s.ownSectId === sectId;
     const isConquered = s.conqueredSects.includes(sectId);
     const isVassal = s.vassals.includes(sectId);
 
@@ -584,7 +584,7 @@ Object.assign(WorldSystem, {
 
   // 获取宗门建筑等级
   getSectBuildingLevel(s, sectId, bldKey) {
-    if (s.ownSect === sectId) {
+    if (s.ownSectId === sectId) {
       return (s.ownSectBuildings && s.ownSectBuildings[bldKey]) || 0;
     }
     // 其他宗门建筑等级根据宗门实力决定
@@ -602,7 +602,7 @@ Object.assign(WorldSystem, {
     if (!sect || !bld) return;
 
     const bldLevel = this.getSectBuildingLevel(s, sectId, bldKey);
-    const isOwnSect = s.ownSect === sectId;
+    const isOwnSect = s.ownSectId === sectId;
     const isConquered = s.conqueredSects.includes(sectId);
     const relation = s.sectRelations[sectId] || 0;
     const canFree = isOwnSect || isConquered;
@@ -675,10 +675,10 @@ Object.assign(WorldSystem, {
     const sectStrength = sect.strength;
     const maxStage = Math.min(Math.floor(sectStrength / 2), 7);
     const playerPos = this.getPlayerSectPosition(s, sectId);
-    const playerPosRank = SECT_POSITIONS[playerPos] ? SECT_POSITIONS[playerPos].rank : 0;
+    const playerPosRank = SECT_POSITIONS_RANK[playerPos] ? SECT_POSITIONS_RANK[playerPos].rank : 0;
 
     let html = '<div class="modal-section"><div class="modal-section-title">📚 ' + sect.name + ' · 藏书阁</div>';
-    html += '<p style="text-align:center;color:var(--text-dim);font-size:0.8em;">你的贡献度：' + (s.sectContribution[sectId] || 0) + ' | 职务：' + (SECT_POSITIONS[playerPos] ? SECT_POSITIONS[playerPos].name : '无') + '</p>';
+    html += '<p style="text-align:center;color:var(--text-dim);font-size:0.8em;">你的贡献度：' + (s.sectContribution[sectId] || 0) + ' | 职务：' + (SECT_POSITIONS_RANK[playerPos] ? SECT_POSITIONS_RANK[playerPos].name : '无') + '</p>';
 
     for (let stage = 0; stage <= maxStage; stage++) {
       const techs = SECT_TECHS_BY_STAGE[stage] || [];
@@ -689,18 +689,18 @@ Object.assign(WorldSystem, {
 
       techs.forEach(tech => {
         const has = s.techniques.includes(tech.id);
-        const posRank = SECT_POSITIONS[tech.posReq] ? SECT_POSITIONS[tech.posReq].rank : 0;
+        const posRank = SECT_POSITIONS_RANK[tech.posReq] ? SECT_POSITIONS_RANK[tech.posReq].rank : 0;
         const meetsPos = playerPosRank >= posRank;
         const meetsCult = CULT_LEVELS[s.cultLevel].stage >= tech.reqStage;
         const canExchange = !has && meetsPos && meetsCult && (s.sectContribution[sectId] || 0) >= tech.contribCost;
-        const isFree = s.ownSect === sectId || s.conqueredSects.includes(sectId);
+        const isFree = s.ownSectId === sectId || s.conqueredSects.includes(sectId);
 
         html += '<div class="modal-item-row" style="opacity:' + (has ? '0.4' : '1') + '"><div>';
         html += '<div style="color:' + (has ? 'var(--text-dim)' : 'var(--gold-bright)') + ';">';
         html += has ? '✅ ' : (canExchange || isFree ? '📜 ' : '🔒 ');
         html += tech.name;
         if (!has) {
-          html += ' <span style="font-size:0.75em;color:var(--text-dim);">[需' + SECT_POSITIONS[tech.posReq].name + ']</span>';
+          html += ' <span style="font-size:0.75em;color:var(--text-dim);">[需' + SECT_POSITIONS_RANK[tech.posReq].name + ']</span>';
           html += ' <span style="font-size:0.75em;color:var(--jade);">' + (isFree ? '免费' : tech.contribCost + '贡献') + '</span>';
         }
         html += '</div>';
@@ -763,7 +763,7 @@ Object.assign(WorldSystem, {
 
   // 获取玩家在宗门中的职位
   getPlayerSectPosition(s, sectId) {
-    if (s.ownSect === sectId) return "sect_leader";
+    if (s.ownSectId === sectId) return "sect_leader";
     const cultStage = CULT_LEVELS[s.cultLevel].stage;
     if (cultStage >= 5) return "grand_elder";
     if (cultStage >= 4) return "elder";
@@ -778,7 +778,7 @@ Object.assign(WorldSystem, {
     this.initExpand7State(s);
     const sect = SECTS_AND_FAMILIES[sectId];
     const playerPos = this.getPlayerSectPosition(s, sectId);
-    const playerPosRank = SECT_POSITIONS[playerPos] ? SECT_POSITIONS[playerPos].rank : 0;
+    const playerPosRank = SECT_POSITIONS_RANK[playerPos] ? SECT_POSITIONS_RANK[playerPos].rank : 0;
     const isFree = s.ownSect === sectId || s.conqueredSects.includes(sectId);
 
     // 根据宗门实力获取宝物列表
@@ -795,13 +795,13 @@ Object.assign(WorldSystem, {
     treasures.forEach(t => {
       const item = ITEMS[t.itemId];
       if (!item) return;
-      const posRank = SECT_POSITIONS[t.posReq] ? SECT_POSITIONS[t.posReq].rank : 0;
+      const posRank = SECT_POSITIONS_RANK[t.posReq] ? SECT_POSITIONS_RANK[t.posReq].rank : 0;
       const meetsPos = playerPosRank >= posRank;
       const canExchange = meetsPos && (isFree || (s.sectContribution[sectId] || 0) >= t.contribCost);
 
       html += '<div class="modal-item-row" style="opacity:' + (canExchange ? '1' : '0.5') + '"><div>';
       html += '<div style="color:' + (canExchange ? 'var(--gold-bright)' : 'var(--text-dim)') + ';">💎 ' + t.name;
-      html += ' <span style="font-size:0.75em;color:var(--text-dim);">[需' + SECT_POSITIONS[t.posReq].name + ']</span>';
+      html += ' <span style="font-size:0.75em;color:var(--text-dim);">[需' + SECT_POSITIONS_RANK[t.posReq].name + ']</span>';
       html += ' <span style="font-size:0.75em;color:var(--jade);">' + (isFree ? '免费' : t.contribCost + '贡献') + '</span>';
       html += '</div>';
       html += '<div class="modal-item-desc">' + (item.desc || '') + '</div>';
@@ -821,7 +821,7 @@ Object.assign(WorldSystem, {
     this.initExpand7State(s);
     const sect = SECTS_AND_FAMILIES[sectId];
     const playerPos = this.getPlayerSectPosition(s, sectId);
-    const playerPosRank = SECT_POSITIONS[playerPos] ? SECT_POSITIONS[playerPos].rank : 0;
+    const playerPosRank = SECT_POSITIONS_RANK[playerPos] ? SECT_POSITIONS_RANK[playerPos].rank : 0;
     const isFree = s.ownSect === sectId || s.conqueredSects.includes(sectId);
 
     let pills = [];
@@ -837,13 +837,13 @@ Object.assign(WorldSystem, {
     pills.forEach(p => {
       const item = ITEMS[p.itemId];
       if (!item) return;
-      const posRank = SECT_POSITIONS[p.posReq] ? SECT_POSITIONS[p.posReq].rank : 0;
+      const posRank = SECT_POSITIONS_RANK[p.posReq] ? SECT_POSITIONS_RANK[p.posReq].rank : 0;
       const meetsPos = playerPosRank >= posRank;
       const canExchange = meetsPos && (isFree || (s.sectContribution[sectId] || 0) >= p.contribCost);
 
       html += '<div class="modal-item-row" style="opacity:' + (canExchange ? '1' : '0.5') + '"><div>';
       html += '<div style="color:' + (canExchange ? 'var(--gold-bright)' : 'var(--text-dim)') + ';">⚗️ ' + p.name;
-      html += ' <span style="font-size:0.75em;color:var(--text-dim);">[需' + SECT_POSITIONS[p.posReq].name + ']</span>';
+      html += ' <span style="font-size:0.75em;color:var(--text-dim);">[需' + SECT_POSITIONS_RANK[p.posReq].name + ']</span>';
       html += ' <span style="font-size:0.75em;color:var(--jade);">' + (isFree ? '免费' : p.contribCost + '贡献') + '</span>';
       html += '</div>';
       html += '<div class="modal-item-desc">' + (item.desc || '') + '</div>';
@@ -863,7 +863,7 @@ Object.assign(WorldSystem, {
     this.initExpand7State(s);
     const sect = SECTS_AND_FAMILIES[sectId];
     const playerPos = this.getPlayerSectPosition(s, sectId);
-    const playerPosRank = SECT_POSITIONS[playerPos] ? SECT_POSITIONS[playerPos].rank : 0;
+    const playerPosRank = SECT_POSITIONS_RANK[playerPos] ? SECT_POSITIONS_RANK[playerPos].rank : 0;
     const isFree = s.ownSect === sectId || s.conqueredSects.includes(sectId);
 
     let weapons = [];
@@ -879,13 +879,13 @@ Object.assign(WorldSystem, {
     weapons.forEach(w => {
       const item = ITEMS[w.itemId];
       if (!item) return;
-      const posRank = SECT_POSITIONS[w.posReq] ? SECT_POSITIONS[w.posReq].rank : 0;
+      const posRank = SECT_POSITIONS_RANK[w.posReq] ? SECT_POSITIONS_RANK[w.posReq].rank : 0;
       const meetsPos = playerPosRank >= posRank;
       const canExchange = meetsPos && (isFree || (s.sectContribution[sectId] || 0) >= w.contribCost);
 
       html += '<div class="modal-item-row" style="opacity:' + (canExchange ? '1' : '0.5') + '"><div>';
       html += '<div style="color:' + (canExchange ? 'var(--gold-bright)' : 'var(--text-dim)') + ';">⚔️ ' + w.name;
-      html += ' <span style="font-size:0.75em;color:var(--text-dim);">[需' + SECT_POSITIONS[w.posReq].name + ']</span>';
+      html += ' <span style="font-size:0.75em;color:var(--text-dim);">[需' + SECT_POSITIONS_RANK[w.posReq].name + ']</span>';
       html += ' <span style="font-size:0.75em;color:var(--jade);">' + (isFree ? '免费' : w.contribCost + '贡献') + '</span>';
       html += '</div>';
       html += '<div class="modal-item-desc">' + (item.desc || '') + '</div>';
@@ -1336,7 +1336,7 @@ Object.assign(WorldSystem, {
     const s = Game.state;
     this.initExpand7State(s);
     if (!s.ownSect) { UI.toast("你还没有自立宗门。", "danger"); return; }
-    const sect = SECTS_AND_FAMILIES[s.ownSect];
+    const sect = SECTS_AND_FAMILIES[s.ownSectId || (s.ownSect && s.ownSect.name)];
 
     let html = '<div class="modal-section"><div class="modal-section-title">🏛️ 宗门管理</div>';
     html += '<p style="text-align:center;color:var(--gold-bright);font-size:1.1em;">' + sect.name + '</p>';
@@ -1362,18 +1362,23 @@ Object.assign(WorldSystem, {
     });
 
     // 成员列表
-    html += '<div class="modal-section-title" style="margin-top:8px;">成员（' + (s.ownSectMembers || []).length + '）</div>';
-    (s.ownSectMembers || []).forEach(member => {
-      const npc = s.npcList.find(n => n.id === member.npcId);
+    const myMembers = (s.ownSectMembers && s.ownSectMembers.length) ? s.ownSectMembers : ((s.ownSect && s.ownSect.members) ? s.ownSect.members : []);
+    html += '<div class="modal-section-title" style="margin-top:8px;">成员（' + myMembers.length + '）</div>';
+    myMembers.forEach(member => {
+      const isObj = typeof member === 'object' && member !== null;
+      const npcId = isObj ? member.npcId : member;
+      const npc = s.npcList.find(n => n.id === npcId);
       if (!npc) return;
       const genderStr = npc.isFemale ? "女" : "男";
+      const role = isObj ? member.role : "弟子";
+      const location = isObj ? member.location : "宗门";
       html += '<div class="modal-item-row"><div>';
       html += '<div style="color:var(--gold-bright);">' + npc.name + '（' + genderStr + '·' + npc.cultName + '）';
-      html += ' <span style="font-size:0.75em;color:var(--jade);">[' + member.role + ']</span></div>';
-      html += '<div class="modal-item-stats">所在地：' + (member.location || "宗门") + ' | 好感：' + npc.mood + '/100</div>';
+      html += ' <span style="font-size:0.75em;color:var(--jade);">[' + role + ']</span></div>';
+      html += '<div class="modal-item-stats">所在地：' + (location || "宗门") + ' | 好感：' + npc.mood + '/100</div>';
       // 提升职介
-      html += '<button class="btn-combat" style="margin-top:4px;font-size:0.6em;padding:2px 6px;" onclick="UI.closeModal();WorldSystem.promoteMember(\'' + member.npcId + '\')">提升职介</button>';
-      html += '<button class="btn-combat" style="margin-top:4px;font-size:0.6em;padding:2px 6px;margin-left:4px;" onclick="UI.closeModal();WorldSystem.rewardMember(\'' + member.npcId + '\')">赏赐</button>';
+      html += '<button class="btn-combat" style="margin-top:4px;font-size:0.6em;padding:2px 6px;" onclick="UI.closeModal();WorldSystem.promoteMember(\'' + npcId + '\')">提升职介</button>';
+      html += '<button class="btn-combat" style="margin-top:4px;font-size:0.6em;padding:2px 6px;margin-left:4px;" onclick="UI.closeModal();WorldSystem.rewardMember(\'' + npcId + '\')">赏赐</button>';
       html += '</div></div>';
     });
 
@@ -1420,13 +1425,20 @@ Object.assign(WorldSystem, {
 
   promoteMember(npcId) {
     const s = Game.state;
-    const member = (s.ownSectMembers || []).find(m => m.npcId === npcId);
-    if (!member) return;
+    if (!s.ownSectMembers) s.ownSectMembers = [];
+    let memberObj = s.ownSectMembers.find(m => typeof m === 'object' && m !== null && m.npcId === npcId);
+    if (!memberObj) {
+      const fallback = (s.ownSect && s.ownSect.members) ? s.ownSect.members : [];
+      const hasMatch = fallback.some(m => (typeof m === 'object' && m !== null) ? m.npcId === npcId : m === npcId);
+      if (!hasMatch) return;
+      memberObj = { npcId: npcId, role: "外门弟子", location: "宗门" };
+      s.ownSectMembers.push(memberObj);
+    }
     const npc = s.npcList.find(n => n.id === npcId && n.isAlive);
     if (!npc) return;
 
     const ranks = ["外门弟子", "内门弟子", "内门执事", "护法长老", "太上长老", "副宗主"];
-    const currentRank = ranks.indexOf(member.role);
+    const currentRank = ranks.indexOf(memberObj.role || "外门弟子");
     if (currentRank < 0 || currentRank >= ranks.length - 1) {
       UI.toast("已达最高职介。", "info"); return;
     }
@@ -1435,10 +1447,10 @@ Object.assign(WorldSystem, {
     if (s.spiritStones < cost) { UI.toast("需要" + cost + "灵石。", "danger"); return; }
 
     s.spiritStones -= cost;
-    member.role = ranks[currentRank + 1];
+    memberObj.role = ranks[currentRank + 1];
     npc.mood = Math.min(100, npc.mood + 10);
 
-    UI.toast(npc.name + "晋升为" + member.role + "！", "success");
+    UI.toast(npc.name + "晋升为" + memberObj.role + "！", "success");
     UI.updateAll();
     this.showOwnSectManage();
   },
@@ -1463,11 +1475,11 @@ Object.assign(WorldSystem, {
   enterOwnSectArea() {
     const s = Game.state;
     this.initExpand7State(s);
-    if (!s.ownSect || !s.ownSectFounded) {
+    if (!(s.ownSectFounded === true && s.ownSect)) {
       UI.toast("你还没有自立宗门。", "danger"); return;
     }
-    const sect = SECTS_AND_FAMILIES[s.ownSect];
-    this.enterSectArea(s.ownSect);
+    const sect = SECTS_AND_FAMILIES[s.ownSectId || (s.ownSect && s.ownSect.name)];
+    this.enterSectArea(s.ownSectId || (s.ownSect && s.ownSect.name));
   },
 
   // ============================================================
@@ -1688,7 +1700,7 @@ Object.assign(WorldSystem, {
         const log = NPC_EXPLORE_LOGS[Math.floor(Math.random() * NPC_EXPLORE_LOGS.length)];
         const areaName = npc.area || "天南";
         const logText = log.replace("{name}", npc.name).replace("{area}", areaName).replace("{item}", "灵石");
-        s.npcExploreLog.unshift({text: logText, time: s.day || 0});
+        s.npcExploreLog.unshift({text: logText, time: s.gameDay || 1});
         if (s.npcExploreLog.length > 20) s.npcExploreLog.pop();
 
         // NPC探索获得灵石
