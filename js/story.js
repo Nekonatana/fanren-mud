@@ -32,8 +32,8 @@ const STORY = {
   ],
   choices:[
     {text:"拿起精铁剑 —— \"弟子愿以武入道。\"",next:"choice_martial",effect:{item:"iron_sword",atk:5}},
-    {text:"拿起丹药瓶 —— \"弟子愿以丹道辅修。\"",next:"choice_pill",effect:{item:"healing_pill",luck:1}},
-    {text:"拿起泛黄册子 —— \"弟子愿学更多知识。\"",next:"choice_book",effect:{item:"qi_pill",comp:1}},
+    {text:"拿起丹药瓶 —— \"弟子愿以丹道辅修。\"",next:"choice_pill",effect:{item:"healing_pill",count:3,luck:1}},
+    {text:"拿起泛黄册子 —— \"弟子愿学更多知识。\"",next:"choice_book",effect:{item:"qi_pill",count:2,comp:1}},
   ],
 },
 
@@ -43,7 +43,10 @@ const STORY = {
     {type:"system_msg",content:"获得：精铁剑（武器 +5攻击）"},
     {type:"dialogue",content:"三日后，你便随为师前往黄枫谷。在此之前，去后山采药时留意些。最近有弟子说后山古洞中有异象。"},
   ],
-  choices:[{text:"前往后山古洞探查",next:"find_bottle"}],
+  choices:[
+    {text:"前往后山古洞探查",next:"find_bottle"},
+    {text:"询问师伯门中是否有其他事",next:"side_quest_missing_sister",condition:{notQuestActive:"sq_missing_sister"}},
+  ],
 },
 "choice_pill":{
   text:[
@@ -102,6 +105,8 @@ const STORY = {
   choices:[
     {text:"如实告知小绿瓶的存在",next:"trust_zhangtie",effect:{flag:"told_bottle"}},
     {text:"隐瞒小绿瓶的事",next:"hide_bottle",effect:{flag:"hid_bottle"}},
+    {text:"询问张铁有何需要帮忙",next:"side_quest_zhangtie_herb",condition:{notQuestActive:"sq_zhangtie_herb"}},
+    {text:"听说墨大夫近来行为古怪……",next:"sq_modoctor_intro",condition:{notFlag:"sq_modoctor_done"}},
   ],
   enter:{exp:20,stone:5,achievement:"first_kill"},
 },
@@ -155,9 +160,11 @@ const STORY = {
     {text:"加入炼丹堂 —— 学习炼丹之术",next:"alchemy_path",effect:{flag:"alchemy",comp:1}},
     {text:"加入武技堂 —— 专研战斗",next:"martial_path",effect:{flag:"martial",atk:3}},
     {text:"前往坊市拍卖会",next:"market_path",effect:{flag:"market",stone:-50}},
-    {text:"出城探索天南坊市城外荒野",next:"tiannan_explore"},
+    {text:"出城探索天南坊市城外荒野",next:"tiannan_free_explore"},
     {text:"⚜️ 查看主线任务",next:"pmain_tiannan_start"},
     {text:"种植灵草修炼",next:"_wild_menu"},
+    {text:"找张铁交付千年药草",next:"side_quest_zhangtie_deliver",condition:{questActive:"sq_zhangtie_herb",item:"thousand_year_ginseng"}},
+    {text:"寻找失踪的师妹陆云",next:"side_quest_missing_sister_complete",condition:{questActive:"sq_missing_sister"}},
   ],
 },
 
@@ -230,6 +237,8 @@ const STORY = {
   choices:[
     {text:"答应晏婴，一同历练",next:"yan_ying_join",effect:{companion:"yan_ying",flag:"has_yanying"}},
     {text:"婉拒，独自历练",next:"tiannan_explore",effect:{flag:"solo"}},
+    {text:"询问晏婴需要什么",next:"side_quest_yanying_pill",condition:{notQuestActive:"sq_yanying_grass"}},
+    {text:"交付3株灵草（完成炼丹之助）",next:"side_quest_yanying_complete",condition:{questActive:"sq_yanying_grass",item:"spirit_grass",itemCount:3}},
   ],
   enter:{item:"qi_pill",count:5,stone:30},
 },
@@ -256,7 +265,6 @@ const STORY = {
     {text:"正面战斗",next:"combat_bandit"},
     {text:"绕道而行",next:"tiannan_avoid",effect:{exp:-10}},
   ],
-  combat:{enemy:"bandit",onWin:"after_bandit",onLose:"death_bandit"},
 },
 
 "death_bandit":{
@@ -289,11 +297,89 @@ const STORY = {
     {type:"narration",content:"在天南游历期间，你听闻一则消息：青云山福地近日灵气大涨，各大门派纷纷派人前往争夺修炼权。"},
     {type:"dialogue",content:"青云山福地？若能进入其中修炼，修为必能大增。"},
     {type:"narration",content:"与此同时，你也听到另一则消息：乱星海的星宫正在招募修士，说是有一场大试炼。"},
+    {type:"narration",content:"更让你心动的是，天南修仙界十年一度的'血色试炼'即将开启，传闻试炼禁地中藏有上古传承与筑基机缘。"},
   ],
   choices:[
     {text:"前往青云山福地争夺修炼权",next:"blessed_qingyun"},
+    {text:"参加血色试炼（推荐）",next:"blood_trial_intro"},
     {text:"直接前往乱星海",next:"chaos_sea_intro",effect:{flag:"skip_foundation"}},
+    {text:"自由探索天南坊市城外",next:"tiannan_free_explore"},
+    {text:"前往附近城镇休整",next:"_wild_menu"},
   ],
+},
+
+// ===== 第三章扩展：血色试炼 =====
+"blood_trial_intro":{
+  text:[
+    {type:"narration",content:"你来到血色试炼的报名处。这里聚集了天南各派的年轻弟子，每个人都满怀机缘之望。"},
+    {type:"dialogue",content:"这次血色试炼，胜者可获得筑基丹与上古功法残卷。但试炼禁地凶险万分，每年都有弟子陨落其中。"},
+    {type:"system_msg",content:"血色试炼：3轮战斗，胜利可获得大量经验、灵石与筑基丹。"},
+  ],
+  choices:[
+    {text:"报名参加血色试炼",next:"blood_trial_round1"},
+    {text:"放弃试炼，继续天南游历",next:"tiannan_event"},
+  ],
+  enter:{flag:"blood_trial_started"},
+},
+
+"blood_trial_round1":{
+  text:[
+    {type:"narration",content:"试炼第一轮——各派弟子混战。你被分到一个有七名弟子的混战圈。"},
+    {type:"danger",content:"试炼弟子们各显神通，飞剑符箓齐发。"},
+  ],
+  choices:[{text:"迎战",next:"blood_trial_combat1"}],
+  combat:{enemy:"blood_trial_disciple",onWin:"blood_trial_round2",onLose:"blood_trial_defeat"},
+},
+
+"blood_trial_round2":{
+  text:[
+    {type:"narration",content:"你击败了对手，进入第二轮——禁地妖兽挑战。"},
+    {type:"system_msg",content:"获得：280经验，50灵石"},
+    {type:"danger",content:"禁地深处传来兽吼，一只凶恶的妖兽冲了出来！"},
+  ],
+  choices:[{text:"迎战妖兽",next:"blood_trial_combat2"}],
+  enter:{exp:280,stone:50},
+  combat:{enemy:"blood_trial_beast",onWin:"blood_trial_round3",onLose:"blood_trial_defeat"},
+},
+
+"blood_trial_round3":{
+  text:[
+    {type:"narration",content:"妖兽倒下，你来到试炼核心——一座上古石台。石台之上，盘坐着一个散发血光的守关者。"},
+    {type:"dialogue",content:"过我这关，传承便是你的。否则，留下你的命。"},
+    {type:"system_msg",content:"获得：520经验，120灵石"},
+  ],
+  choices:[{text:"决战守关者",next:"blood_trial_combat3"}],
+  enter:{exp:520,stone:120},
+  combat:{enemy:"blood_trial_boss",onWin:"blood_trial_victory",onLose:"blood_trial_defeat"},
+},
+
+"blood_trial_victory":{
+  text:[
+    {type:"system_msg",content:"✨ 血色试炼通关！"},
+    {type:"narration",content:"守关者化为血光散去，留下一枚筑基丹与一卷上古功法残卷。"},
+    {type:"system_msg",content:"获得：1100经验，280灵石，筑基丹×1，长春功精要"},
+    {type:"dialogue",content:"小友资质虽平，却有大气运。这枚筑基丹与功法残卷，便赠予你吧。"},
+    {type:"thought",content:"有了这枚筑基丹，我离筑基就更近一步了！"},
+  ],
+  choices:[
+    {text:"前往青云山福地继续修炼",next:"blessed_qingyun"},
+    {text:"直接前往乱星海",next:"chaos_sea_intro",effect:{flag:"skip_foundation"}},
+    {text:"返回天南坊市城休整",next:"tiannan_free_explore"},
+  ],
+  enter:{exp:1100,stone:280,item:"foundation_pill",flag:"blood_trial_victory"},
+},
+
+"blood_trial_defeat":{
+  text:[
+    {type:"danger",content:"你在血色试炼中失利，被传送出禁地。"},
+    {type:"system_msg",content:"虽败犹荣，你获得了一些经验与灵石。"},
+    {type:"narration",content:"你虽未能通关，但试炼中的战斗让你受益匪浅。"},
+  ],
+  choices:[
+    {text:"继续天南游历",next:"tiannan_event"},
+    {text:"前往青云山福地修炼",next:"blessed_qingyun"},
+  ],
+  enter:{exp:150,stone:30},
 },
 
 "blessed_qingyun":{
@@ -318,7 +404,7 @@ const STORY = {
   ],
   choices:[
     {text:"全力冲击筑基",next:"foundation_success",effect:{flag:"foundation_tried"}},
-    {text:"服用额外丹药辅助（消耗筑基丹）",next:"foundation_boost",effect:{item:"foundation_pill"}},
+    {text:"服用额外筑基丹辅助突破",next:"foundation_boost",effect:{item:"foundation_pill"}},
   ],
 },
 
@@ -504,10 +590,88 @@ const STORY = {
     {type:"dialogue",content:"恭喜你，年轻人。你已获得进入虚天殿的资格。"},
     {type:"narration",content:"星宫宫主亲自接见了你，并赠予你一枚虚天令。"},
     {type:"system_msg",content:"获得：虚天令（进入虚天殿的凭证）"},
-    {type:"dialogue",content:"虚天殿三年后开启，届时凭此令进入。在那之前，好好修炼吧。"},
+    {type:"dialogue",content:"虚天殿三年后开启。在那之前，星海中将有一场大变，你若有意，可助星宫一臂之力。"},
   ],
-  choices:[{text:"三年后前往虚天殿",next:"void_temple_intro"}],
+  choices:[
+    {text:"协助星宫平定海乱",next:"chaos_sea_war_intro"},
+    {text:"三年后直接前往虚天殿",next:"void_temple_intro"},
+    {text:"自由探索乱星海",next:"luanxing_explore"},
+  ],
   enter:{achievement:"sea_conqueror",exp:1000},
+},
+
+// ===== 第四章扩展：乱星海海战 =====
+"chaos_sea_war_intro":{
+  text:[
+    {type:"narration",content:"星宫宫主告知你，近期乱星海中出现了一伙凶悍的海盗，号称'乱星海霸主'，他们劫掠商船、屠戮修士，甚至觊觎星宫的统治。"},
+    {type:"dialogue",content:"这伙海盗的首领修为高深，手下更有大批亡命之徒。星宫愿以重金悬赏，邀请各派修士共同剿灭。"},
+    {type:"system_msg",content:"协助星宫平乱：3场战斗，奖励丰厚灵石与星辰砂。"},
+  ],
+  choices:[
+    {text:"接下任务，前往海盗据点",next:"chaos_sea_war_round1"},
+    {text:"暂不参与，直接前往虚天殿",next:"void_temple_intro"},
+  ],
+  enter:{flag:"chaos_sea_war"},
+},
+
+"chaos_sea_war_round1":{
+  text:[
+    {type:"narration",content:"你随星宫舰队来到海盗活动海域。前方出现一队海盗巡逻船。"},
+    {type:"danger",content:"海盗船逼来，战斗一触即发！"},
+  ],
+  choices:[{text:"迎战巡逻队",next:"chaos_sea_war_combat1"}],
+  combat:{enemy:"star_palace_patrol",onWin:"chaos_sea_war_round2",onLose:"chaos_sea_war_defeat"},
+},
+
+"chaos_sea_war_round2":{
+  text:[
+    {type:"narration",content:"你击溃了巡逻队，直逼海盗主寨。寨门前，一名千夫长拦住了你。"},
+    {type:"system_msg",content:"获得：680经验，180灵石"},
+    {type:"dialogue",content:"来者何人？休想踏过我这一关！"},
+  ],
+  choices:[{text:"迎战千夫长",next:"chaos_sea_war_combat2"}],
+  enter:{exp:680,stone:180},
+  combat:{enemy:"star_palace_captain",onWin:"chaos_sea_war_round3",onLose:"chaos_sea_war_defeat"},
+},
+
+"chaos_sea_war_round3":{
+  text:[
+    {type:"narration",content:"千夫长倒下，你闯入主寨。寨中一名身披玄铁战甲的男子正冷冷地望着你。"},
+    {type:"dialogue",content:"你便是星宫请来的帮手？哼，能闯到这里，算你有点本事。但我才是这片海域的主人！"},
+    {type:"danger",content:"乱星海霸主——玄铁战甲男子，向你扑来！"},
+    {type:"system_msg",content:"获得：1500经验，380灵石"},
+  ],
+  choices:[{text:"决战霸主",next:"chaos_sea_war_combat3"}],
+  enter:{exp:1500,stone:380},
+  combat:{enemy:"chaos_sea_overlord",onWin:"chaos_sea_war_victory",onLose:"chaos_sea_war_defeat"},
+},
+
+"chaos_sea_war_victory":{
+  text:[
+    {type:"system_msg",content:"✨ 乱星海霸主被击败！"},
+    {type:"narration",content:"霸主重伤遁逃，海盗群龙无首，星宫舰队一举扫平了海盗据点。"},
+    {type:"dialogue",content:"多谢小友相助！这是星宫的一点心意——大量灵石与星辰砂。"},
+    {type:"system_msg",content:"获得：2600经验，680灵石，星辰砂×3"},
+    {type:"thought",content:"此次平乱收获颇丰，修为更进一步。虚天殿开殿在即，是时候前往了。"},
+  ],
+  choices:[
+    {text:"前往虚天殿",next:"void_temple_intro"},
+    {text:"返回乱星海休整",next:"luanxing_explore"},
+  ],
+  enter:{exp:2600,stone:680,item:"star_sand",count:3,flag:"chaos_sea_victory"},
+},
+
+"chaos_sea_war_defeat":{
+  text:[
+    {type:"danger",content:"你在海战中受伤，被星宫弟子救回。"},
+    {type:"system_msg",content:"虽未全胜，但仍获得了一些战功奖励。"},
+    {type:"narration",content:"你休养了一段时间，修为略有精进。"},
+  ],
+  choices:[
+    {text:"前往虚天殿",next:"void_temple_intro"},
+    {text:"继续在乱星海修炼",next:"luanxing_explore"},
+  ],
+  enter:{exp:500,stone:100},
 },
 
 // ==================== 第五章: 虚天殿 ====================
@@ -542,7 +706,6 @@ const STORY = {
     {text:"出手相救",next:"void_rescue",effect:{flag:"rescued_star"}},
     {text:"趁虚抢夺虚空兽身上的宝物",next:"void_betray",effect:{flag:"betrayed"}},
   ],
-  combat:{enemy:"void_beast",onWin:"void_after_rescue",onLose:"death_void"},
 },
 
 "death_void":{
@@ -555,12 +718,11 @@ const STORY = {
 
 "void_rescue":{
   text:[
-    {type:"dialogue",content:"多谢道友相救！我叫厉飞雨，是星宫弟子。这枚乾坤戒赠予道友，聊表谢意。"},
-    {type:"system_msg",content:"获得：乾坤戒（饰品·防御+50·灵力上限+500）"},
-    {type:"dialogue",content:"另外，虚天殿深处有一位神秘女子，似乎与虚天鼎有缘。道友若有缘，可以去看看。"},
+    {type:"narration",content:"你决定出手相救，拔剑冲向虚空兽！"},
+    {type:"danger",content:"虚空兽转头向你扑来！"},
   ],
-  choices:[{text:"前往虚天殿深处",next:"void_floor2_intro"}],
-  enter:{item:"space_ring",flag:"li_feiyu_friend"},
+  choices:[{text:"战斗中……",next:"void_rescue"}],
+  combat:{enemy:"void_beast",onWin:"void_after_rescue",onLose:"death_void"},
 },
 
 "void_betray":{
@@ -568,10 +730,11 @@ const STORY = {
     {type:"danger",content:"你趁乱夺取了虚空兽旁的一件宝物——那修士惨叫一声，被虚空兽撕碎。"},
     {type:"system_msg",content:"获得：紫煞剑（武器+40攻击）、灵石×100"},
     {type:"thought",content:"修仙界弱肉强食，我不过是为求长生……"},
-    {type:"danger",content:"你感到一丝心魔的波动……"},
+    {type:"danger",content:"虚空兽发出怒吼，向你扑来！你感到一丝心魔的波动……"},
   ],
-  choices:[{text:"前往虚天殿深处",next:"void_floor2_intro"}],
+  choices:[{text:"战斗中……",next:"void_betray"}],
   enter:{item:"zisha_sword",stone:100,flag:"evil_act",achievement:"no_mercy",luck:-1},
+  combat:{enemy:"void_beast",onWin:"void_floor2_intro",onLose:"death_void"},
 },
 
 "void_loot":{
@@ -657,18 +820,77 @@ const STORY = {
 "void_after_rescue":{
   text:[
     {type:"narration",content:"你击败了虚空兽，星宫弟子得救了。"},
+    {type:"dialogue",content:"多谢道友相救！我叫厉飞雨，是星宫弟子。这枚乾坤戒赠予道友，聊表谢意。"},
+    {type:"system_msg",content:"获得：乾坤戒（饰品·防御+50·灵力上限+500）"},
+    {type:"dialogue",content:"另外，虚天殿深处有一位神秘女子，似乎与虚天鼎有缘。道友若有缘，可以去看看。"},
   ],
   choices:[{text:"前往虚天殿深处",next:"void_floor2_intro"}],
+  enter:{item:"space_ring",flag:"li_feiyu_friend"},
 },
 
 "after_void_temple":{
   text:[
     {type:"narration",content:"虚天殿之行让你获益匪浅。修为精进了不少，更获得了几件宝物。"},
     {type:"system_msg",content:"修为提升至：结丹初期！"},
-    {type:"narration",content:"离开虚天殿后，你听闻天南与慕兰草原的战事一触即发。各派正在征召修士参战。"},
+    {type:"narration",content:"离开虚天殿前，你听闻殿内还有第三层——藏有上古守护者与虚天残灵，凶险万分，但宝物惊人。"},
+    {type:"narration",content:"与此同时，天南与慕兰草原的战事一触即发，各派正在征召修士参战。"},
   ],
-  choices:[{text:"前往慕兰草原",next:"mulan_intro"}],
+  choices:[
+    {text:"挑战虚天殿第三层（高难度）",next:"void_floor3_intro"},
+    {text:"前往慕兰草原参战",next:"mulan_intro"},
+    {text:"自由探索",next:"_wild_menu"},
+  ],
   enter:{cultUp:1,achievement:"core_formation",exp:5000,stone:200},
+},
+
+// ===== 第五章扩展：虚天殿第三层 =====
+"void_floor3_intro":{
+  text:[
+    {type:"narration",content:"你独自进入虚天殿第三层。这里灵气浓郁得近乎化为实质，殿中央悬浮着一道残破的虚影。"},
+    {type:"danger",content:"虚影感知到你的气息，缓缓凝聚成形——竟是虚天殿的护殿金甲傀儡！"},
+    {type:"dialogue",content:"擅闯禁地者，死！"},
+  ],
+  choices:[{text:"迎战金甲傀儡",next:"void_floor3_combat1"}],
+  combat:{enemy:"void_floor3_puppet",onWin:"void_floor3_second",onLose:"void_floor3_defeat"},
+},
+
+"void_floor3_second":{
+  text:[
+    {type:"system_msg",content:"获得：3200经验，880灵石"},
+    {type:"narration",content:"金甲傀儡倒下，殿深处一道虚影缓缓凝聚——竟是虚天殿 former 主人的残灵！"},
+    {type:"dialogue",content:"年轻人……能击败我的傀儡，你已有资格继承我的衣钵。但首先，让我看看你的本事！"},
+    {type:"danger",content:"虚天残灵向你发动了攻击！"},
+  ],
+  choices:[{text:"迎战虚天残灵",next:"void_floor3_combat2"}],
+  enter:{exp:3200,stone:880},
+  combat:{enemy:"void_spirit_remnant",onWin:"void_floor3_victory",onLose:"void_floor3_defeat"},
+},
+
+"void_floor3_victory":{
+  text:[
+    {type:"system_msg",content:"✨ 击败虚天残灵！"},
+    {type:"narration",content:"残灵化为点点灵光散去，临散前留下一句话："},
+    {type:"dialogue",content:"善用你所获之物……天道轮回报应不爽。去罢，年轻人。"},
+    {type:"system_msg",content:"获得：4800经验，1500灵石，虚天残图×1"},
+    {type:"thought",content:"虚天残图……似乎与更上层的秘境有关。先去慕兰草原，战事要紧。"},
+  ],
+  choices:[
+    {text:"前往慕兰草原",next:"mulan_intro"},
+    {text:"返回自由探索",next:"_wild_menu"},
+  ],
+  enter:{exp:4800,stone:1500,item:"star_sand",count:2,flag:"void_floor3_cleared"},
+},
+
+"void_floor3_defeat":{
+  text:[
+    {type:"danger",content:"你被虚天殿第三层的强者击败，被殿内灵光传送出去。"},
+    {type:"system_msg",content:"虽败犹荣，你仍获得了一些经验。"},
+  ],
+  choices:[
+    {text:"前往慕兰草原",next:"mulan_intro"},
+    {text:"自由探索",next:"_wild_menu"},
+  ],
+  enter:{exp:800,stone:150},
 },
 
 // ==================== 第六章: 慕兰大战 ====================
@@ -755,14 +977,93 @@ const STORY = {
 
 "mulan_after_battle":{
   text:[
-    {type:"narration",content:"你击败了慕兰萨满，在战场上名声大振。大战最终以天南联盟险胜告终。"},
-    {type:"narration",content:"战后，你在战场上获得了一件宝物——龙纹刀。"},
-    {type:"system_msg",content:"获得：龙纹刀（武器·攻击+400）"},
-    {type:"system_msg",content:"获得：蛟龙血（炼器珍材）"},
-    {type:"narration",content:"大战之后，你听闻坠魔谷中出现了上古魔修的遗迹，各派修士纷纷前往探查。"},
+    {type:"narration",content:"你击败了慕兰萨满，在战场上名声大振。"},
+    {type:"narration",content:"但慕兰大军并未就此退却——慕兰可汗派出了精锐亲卫与大巫师，准备反扑。"},
+    {type:"system_msg",content:"获得：龙纹刀（武器·攻击+400），蛟龙血"},
+    {type:"danger",content:"慕兰大军压境，决战在即！"},
+    {type:"narration",content:"战后，你也听闻坠魔谷中出现了上古魔修的遗迹。"},
   ],
-  choices:[{text:"前往坠魔谷",next:"demon_valley_intro"}],
+  choices:[
+    {text:"参与慕兰决战（高难度）",next:"mulan_final_war_intro"},
+    {text:"直接前往坠魔谷",next:"demon_valley_intro"},
+    {text:"自由探索慕兰战场",next:"mulan_explore"},
+  ],
   enter:{item:"dragon_pattern_blade",item2:"dragon_blood",achievement:"mulan_warrior",exp:8000,stone:300},
+},
+
+// ===== 第六章扩展：慕兰决战 =====
+"mulan_final_war_intro":{
+  text:[
+    {type:"narration",content:"决战之夜，慕兰可汗亲率精锐亲卫与大巫师反扑。天南联盟严阵以待。"},
+    {type:"dialogue",content:"韩道友，慕兰可汗亲卫与大巫师修为高深，非你我能够匹敌。还请道友斩首其大巫师，断了慕兰的根基！"},
+    {type:"system_msg",content:"慕兰决战：3场战斗，奖励海量经验与灵石。"},
+  ],
+  choices:[
+    {text:"潜入慕兰大营",next:"mulan_final_war_round1"},
+    {text:"放弃决战，前往坠魔谷",next:"demon_valley_intro"},
+  ],
+  enter:{flag:"mulan_final_war"},
+},
+
+"mulan_final_war_round1":{
+  text:[
+    {type:"narration",content:"你潜入慕兰大营，遭遇一队慕兰斥候。"},
+    {type:"danger",content:"斥候们抽出弯刀，向你扑来！"},
+  ],
+  choices:[{text:"迎战斥候",next:"mulan_final_war_combat1"}],
+  combat:{enemy:"mulan_scout",onWin:"mulan_final_war_round2",onLose:"mulan_final_war_defeat"},
+},
+
+"mulan_final_war_round2":{
+  text:[
+    {type:"narration",content:"你解决斥候，潜入大营核心。帐篷中传来低沉的咒语声——慕兰大巫师正在举行血祭！"},
+    {type:"system_msg",content:"获得：1300经验，280灵石"},
+    {type:"dialogue",content:"外来者！竟敢打扰我的血祭——拿命来！"},
+    {type:"danger",content:"大巫师召唤出血色雾气，向你扑来！"},
+  ],
+  choices:[{text:"决战大巫师",next:"mulan_final_war_combat2"}],
+  enter:{exp:1300,stone:280},
+  combat:{enemy:"mulan_sorcerer",onWin:"mulan_final_war_round3",onLose:"mulan_final_war_defeat"},
+},
+
+"mulan_final_war_round3":{
+  text:[
+    {type:"narration",content:"大巫师倒下，血祭中断。慕兰可汗闻讯大怒，亲率亲卫前来围杀你。"},
+    {type:"system_msg",content:"获得：3200经验，980灵石"},
+    {type:"dialogue",content:"杀我大巫师者，必死无疑！亲卫们，给我杀！"},
+    {type:"danger",content:"慕兰可汗亲卫——重甲骑兵向你冲来！"},
+  ],
+  choices:[{text:"决战可汗亲卫",next:"mulan_final_war_combat3"}],
+  enter:{exp:3200,stone:980},
+  combat:{enemy:"mulan_khan_guard",onWin:"mulan_final_war_victory",onLose:"mulan_final_war_defeat"},
+},
+
+"mulan_final_war_victory":{
+  text:[
+    {type:"system_msg",content:"✨ 慕兰决战胜利！"},
+    {type:"narration",content:"可汗亲卫全军覆没，慕兰可汗仓皇逃遁。天南联盟乘胜追击，慕兰大军溃败。"},
+    {type:"dialogue",content:"韩道友，此战首功非你莫属！这是天南联盟的一点心意。"},
+    {type:"system_msg",content:"获得：4800经验，1500灵石，龙血×2"},
+    {type:"thought",content:"此战收获颇丰，足以冲击元婴期。坠魔谷的机缘不容错过。"},
+  ],
+  choices:[
+    {text:"前往坠魔谷",next:"demon_valley_intro"},
+    {text:"返回慕兰战场休整",next:"mulan_explore"},
+  ],
+  enter:{exp:4800,stone:1500,item:"dragon_blood",count:2,flag:"mulan_final_victory"},
+},
+
+"mulan_final_war_defeat":{
+  text:[
+    {type:"danger",content:"你在决战中受伤，被天南联盟弟子救回。"},
+    {type:"system_msg",content:"虽未全胜，但仍获得了一些战功奖励。"},
+    {type:"narration",content:"你休养了一段时间，修为略有精进。"},
+  ],
+  choices:[
+    {text:"前往坠魔谷",next:"demon_valley_intro"},
+    {text:"自由探索",next:"_wild_menu"},
+  ],
+  enter:{exp:800,stone:150},
 },
 
 // ==================== 第七章: 坠魔谷 ====================
@@ -773,19 +1074,102 @@ const STORY = {
     {type:"narration",content:"你深入谷中，感受到浓烈的魔气侵蚀。若非你修为精进，恐怕早已被魔气入侵心神。"},
     {type:"danger",content:"此处凶险万分，步步杀机。"},
   ],
-  choices:[{text:"深入坠魔谷",next:"demon_valley_deep"}],
+  choices:[
+    {text:"深入坠魔谷",next:"demon_valley_deep"},
+    {text:"自由探索坠魔谷外围",next:"_wild_menu"},
+    {text:"返回附近城镇休整",next:"_wild_return"},
+  ],
 },
 
 "demon_valley_deep":{
   text:[
-    {type:"narration",content:"谷中幽暗，四壁如削。你走着走着，发现前方分出三条岔路。"},
-    {type:"dialogue",content:"左路有淡淡药香，中路有微弱灵光，右路则传来阵阵阴风。"},
+    {type:"narration",content:"谷中幽暗，四壁如削。你走着走着，发现前方分出数条岔路。"},
+    {type:"dialogue",content:"左路有淡淡药香，中路有微弱灵光，右路则传来阵阵阴风。而在更深处，一股令人心悸的恐怖气息若隐若现——那是魔域核心的方向。"},
   ],
   choices:[
     {text:"走左路（药香）",next:"demon_left"},
     {text:"走中路（灵光）",next:"demon_middle"},
     {text:"走右路（阴风）",next:"demon_right"},
+    {text:"深入魔域核心（高难度）",next:"demon_valley_core_intro"},
   ],
+},
+
+"demon_valley_core_intro":{
+  text:[
+    {type:"danger",content:"你循着那股恐怖气息，向魔域核心深入。越往里走，魔气越发浓郁，连灵力护罩都被腐蚀得滋滋作响。"},
+    {type:"narration",content:"前方豁然开朗——这是一处巨大的地下魔窟。窟顶倒悬着无数魔蝠，中央一座魔池翻涌着黑色液体。"},
+    {type:"dialogue",content:"擅闯魔域者——死！」 ——一个尖锐的声音从窟顶传来。"},
+    {type:"danger",content:"成群的魔蝠扑面而来，为首一只体型巨大的魔蝠王盯着你，獠牙上滴着紫黑色的毒液。"},
+  ],
+  choices:[{text:"迎战魔蝠王",next:"combat_demon_valley_bat"}],
+  combat:{enemy:"demon_valley_bat",onWin:"demon_valley_core_bat_win",onLose:"demon_valley_core_fail"},
+},
+
+"combat_demon_valley_bat":{
+  text:[{type:"danger",content:"魔蝠王扑杀而来！"}],
+  choices:[{text:"战斗中……",next:"combat_demon_valley_bat"}],
+},
+
+"demon_valley_core_bat_win":{
+  text:[
+    {type:"narration",content:"魔蝠王发出凄厉的嘶吼，从窟顶坠落，砸得地动山摇。其余魔蝠四散逃窜。"},
+    {type:"system_msg",content:"击败魔蝠王！修为大增。"},
+    {type:"narration",content:"你继续向魔池深处走去。魔池中央浮现出一道高大的魔影——那是古魔麾下的魔将残魂。"},
+    {type:"dialogue",content:"千年了……终于有像样的修士送上门来。让本将用你的鲜血，唤醒主人的真身！"},
+  ],
+  choices:[{text:"迎战魔将",next:"combat_demon_valley_general"}],
+  combat:{enemy:"demon_valley_general",onWin:"demon_valley_core_general_win",onLose:"demon_valley_core_fail"},
+  enter:{exp:2400,stone:580,achievement:"first_kill"},
+},
+
+"combat_demon_valley_general":{
+  text:[{type:"danger",content:"古魔麾下魔将挥舞魔刃斩来！"}],
+  choices:[{text:"战斗中……",next:"combat_demon_valley_general"}],
+},
+
+"demon_valley_core_general_win":{
+  text:[
+    {type:"danger",content:"魔将的残魂在惨叫中消散。但他的鲜血已经流入魔池——魔池开始剧烈翻涌！"},
+    {type:"narration",content:"一道冲天的黑光从魔池中爆发，整座魔窟都在颤抖。一颗散发着无尽魔气的巨大心脏从池底缓缓升起——古魔之心！"},
+    {type:"dialogue",content:"哈哈哈！本座沉睡千年，今日终将重见天日！小辈，感谢你送来的祭品！"},
+    {type:"danger",content:"这是古魔的本源之心，是它复生的关键。一旦让它苏醒，整个修仙界都将陷入浩劫！"},
+    {type:"thought",content:"绝不能让它复活！这一战，关乎苍生！"},
+  ],
+  choices:[{text:"决战古魔之心",next:"combat_demon_valley_heart"}],
+  combat:{enemy:"demon_valley_heart",onWin:"demon_valley_core_heart_win",onLose:"demon_valley_core_fail"},
+  enter:{exp:5200,stone:1600},
+},
+
+"combat_demon_valley_heart":{
+  text:[{type:"danger",content:"古魔之心爆发出毁天灭地的魔气！"}],
+  choices:[{text:"战斗中……",next:"combat_demon_valley_heart"}],
+},
+
+"demon_valley_core_heart_win":{
+  text:[
+    {type:"system_msg",content:"✨✨✨ 古魔之心被你彻底摧毁！✨✨✨"},
+    {type:"narration",content:"伴随着一声惊天动地的爆鸣，古魔之心炸裂开来。滔天的魔气在瞬间消散，整座魔窟轰然崩塌。"},
+    {type:"narration",content:"你在崩塌前一刻飞身而出，怀中抱着从魔池底部捞起的一枚古朴玉简——上面记载着失传已久的上古功法。"},
+    {type:"system_msg",content:"获得：虚天残卷（修为暴增），大量灵石！"},
+    {type:"dialogue",content:"你不仅阻止了一场浩劫，还获得了上古传承。此事传开，必将震动整个修仙界。"},
+    {type:"thought",content:"魔域已平，但那魔修残魂的气息……还在更深处。"},
+  ],
+  choices:[{text:"前往魔池底部探查残魂",next:"demon_valley_boss"}],
+  enter:{exp:8800,stone:2800,technique:"void_slash",achievement:"demon_valley",flag:"destroyed_ancient_demon",cultUp:1},
+},
+
+"demon_valley_core_fail":{
+  text:[
+    {type:"danger",content:"魔域核心的敌人太过强大，你身负重伤，被迫撤退。"},
+    {type:"narration",content:"你勉力逃出魔窟，在谷口喘息良久。看来需要修为精进后再来挑战。"},
+    {type:"system_msg",content:"天道给了你重来之机。"},
+  ],
+  choices:[
+    {text:"重整旗鼓再战",next:"demon_valley_core_intro"},
+    {text:"先去其他岔路探索",next:"demon_valley_deep"},
+    {text:"返回附近城镇休整",next:"_wild_return"},
+  ],
+  enter:{hp:-500},
 },
 
 "demon_left":{
@@ -832,7 +1216,6 @@ const STORY = {
     {text:"迎战魔主",next:"combat_demon_lord"},
     {text:"转身逃跑",next:"demon_flee"},
   ],
-  combat:{enemy:"demon_lord",onWin:"demon_valley_boss",onLose:"death_demon2"},
 },
 
 "death_demon2":{
@@ -921,7 +1304,11 @@ const STORY = {
     {type:"dialogue",content:"飞升灵界……这是每一个修士的终极梦想。但天劫之威，足以毁灭一切。"},
     {type:"narration",content:"你回到了一处清修之地，准备冲击更高的境界，为飞升灵界做准备。"},
   ],
-  choices:[{text:"闭关修炼",next:"spirit_train"}],
+  choices:[
+    {text:"闭关修炼",next:"spirit_train"},
+    {text:"出城历练积攒底蕴",next:"_wild_menu"},
+    {text:"前往附近城镇打听消息",next:"_wild_return"},
+  ],
 },
 
 "spirit_train":{
@@ -931,12 +1318,100 @@ const STORY = {
     {type:"system_msg",content:"✨ 修为大增！"},
     {type:"narration",content:"化神之后的修炼更加艰难。你需要找到飞升的契机。"},
     {type:"dialogue",content:"韩道友，灵界有一处通道即将开启。若要飞升，这是最好的机会。"},
+    {type:"danger",content:"然而就在此时，你感到道心深处有一丝异样的波动——那是心魔在窥伺。"},
+    {type:"thought",content:"心魔不除，渡劫必败。在飞升之前，必须先在心中斩魔！"},
   ],
   choices:[
     {text:"立刻前往飞升通道",next:"spirit_channel",effect:{flag:"eager_ascending"}},
     {text:"先修炼至大乘再飞升",next:"spirit_delayed",effect:{flag:"patient_ascending"}},
+    {text:"闭关斩心魔（高难度·必经）",next:"heart_demon_trial_intro"},
+    {text:"出城探索积攒实力",next:"_wild_menu"},
   ],
   enter:{cultUp:2,achievement:"spirit_transformation",exp:100000,stone:1000},
+},
+
+"heart_demon_trial_intro":{
+  text:[
+    {type:"danger",content:"你盘膝入定，神识沉入道心深处。在这里，修为与法宝都失去了意义——你只能以道心直面心魔。"},
+    {type:"narration",content:"道心之内，往事如走马灯般闪现。被欺凌的童年、刀光剑影的修仙路、生死相依的道侣……每一个画面都在考验你的道。"},
+    {type:"dialogue",content:"你为何而修？为长生？为权势？为情？还是为那虚无缥缈的大道？」 ——心魔的声音在你耳边响起，幻化成你自己的模样。"},
+    {type:"danger",content:"心魔化出你最强的形态，向你扑来！"},
+  ],
+  choices:[{text:"直面心魔",next:"combat_heart_demon_trial"}],
+  combat:{enemy:"heart_demon",onWin:"heart_demon_trial_win",onLose:"heart_demon_trial_fail"},
+},
+
+"combat_heart_demon_trial":{
+  text:[{type:"danger",content:"心魔以你最熟悉的招式反击！"}],
+  choices:[{text:"战斗中……",next:"combat_heart_demon_trial"}],
+},
+
+"heart_demon_trial_fail":{
+  text:[
+    {type:"danger",content:"你败给了心魔，神识被震荡出道心。"},
+    {type:"narration",content:"你猛然睁眼，冷汗涔涔。心魔未除，渡劫之时必有后患。"},
+    {type:"system_msg",content:"心魔值+1，需要继续修炼稳固道心。"},
+  ],
+  choices:[
+    {text:"继续闭关再战",next:"heart_demon_trial_intro"},
+    {text:"先出城历练",next:"_wild_menu"},
+  ],
+  enter:{heartDemon:1},
+},
+
+"heart_demon_trial_win":{
+  text:[
+    {type:"system_msg",content:"✨ 心魔被斩！道心通明！"},
+    {type:"narration",content:"你以坚定的道心击碎了心魔的幻象。心魔消散之处，留下一缕纯净的道韵，被你吸收。"},
+    {type:"system_msg",content:"道心圆满：心魔值-3，悟性+8，机缘+5，攻击+5%。"},
+    {type:"dialogue",content:"道心既定，天劫又有何惧？现在的你，已具备飞升灵界的资格。"},
+    {type:"thought",content:"心魔已斩，但天劫之前，还需经历凡尘一劫，方能圆满。"},
+  ],
+  choices:[
+    {text:"前往飞升通道",next:"spirit_channel",effect:{flag:"heart_demon_cleared"}},
+    {text:"先历凡尘劫",next:"mortal_tribulation_intro",effect:{flag:"mortal_trial_attempt"}},
+    {text:"继续闭关修炼",next:"spirit_delayed"},
+  ],
+  enter:{heartDemon:-3,comp:8,luck:5,atk:0.05,achievement:"hidden_truth",exp:9800,flag:"heart_demon_cleared"},
+},
+
+"mortal_tribulation_intro":{
+  text:[
+    {type:"danger",content:"凡尘劫——传说中只有少数大能才会主动迎击的劫难。它并非肉身之劫，而是因果之劫。"},
+    {type:"narration",content:"你以神识沟通天道，主动引动凡尘劫。顿时，你一生所结的因果化作实质，化作一尊巨大的劫影降临！"},
+    {type:"dialogue",content:"韩立，你欠下无数因果，今日便是清算之时！」 ——劫影开口，声如雷鸣。"},
+  ],
+  choices:[{text:"迎战凡尘劫",next:"combat_mortal_tribulation"}],
+  combat:{enemy:"mortal_tribulation",onWin:"mortal_tribulation_win",onLose:"mortal_tribulation_fail"},
+},
+
+"combat_mortal_tribulation":{
+  text:[{type:"danger",content:"凡尘劫影以因果之力压制而来！"}],
+  choices:[{text:"战斗中……",next:"combat_mortal_tribulation"}],
+},
+
+"mortal_tribulation_fail":{
+  text:[
+    {type:"danger",content:"凡尘劫太过沉重，你被因果压制，神识受创。"},
+    {type:"narration",content:"你勉强稳住道心，撤回神识。看来因果未清，需继续行善积德。"},
+    {type:"system_msg",content:"因果值+5，需要继续修炼再战。"},
+  ],
+  choices:[
+    {text:"重整再战",next:"mortal_tribulation_intro"},
+    {text:"先去飞升通道",next:"spirit_channel"},
+  ],
+  enter:{karma:5},
+},
+
+"mortal_tribulation_win":{
+  text:[
+    {type:"system_msg",content:"✨ 凡尘劫渡过！因果尽消！"},
+    {type:"narration",content:"你以大毅力斩断了所有因果纠缠，劫影在金光中消散。你的修为在渡劫中再次精进，福缘深厚。"},
+    {type:"system_msg",content:"因果值-10，悟性+10，机缘+8，全属性+10%。"},
+    {type:"dialogue",content:"因果已了，道心通明，心魔尽除。天劫降临吧！我已无所畏惧！"},
+  ],
+  choices:[{text:"前往飞升通道",next:"spirit_channel",effect:{flag:"mortal_trial_cleared"}}],
+  enter:{karma:-10,comp:10,luck:8,atk:0.1,def:0.1,maxHp:0.1,maxMp:0.1,exp:18000,flag:"mortal_trial_cleared"},
 },
 
 "spirit_delayed":{
@@ -1142,6 +1617,39 @@ const STORY = {
   ],
   choices:[],
   ending:"retreat_end",
+},
+
+// ==================== 后日谈（结局后继续游玩） ====================
+"after_ending_hub":{
+  text:[
+    {type:"chapter_title",content:"后 日 谈 · 大 道 无 尽"},
+    {type:"narration",content:"大道既成，你却并未止步。修仙之路，本就永无止境。"},
+    {type:"narration",content:"你回到熟悉的修仙界，往日的伙伴、敌人、恩怨都还在。这一次，没有紧迫的飞升之约，你可以按自己的节奏，继续探索这广袤的修仙世界。"},
+    {type:"dialogue",content:"道友，听说你已证大道？不知可否指点一二？」 ——一位后辈修士恭敬地问道。"},
+    {type:"thought",content:"既已超脱，便随心而行。或修炼、或游历、或再战强敌，皆由我心。"},
+  ],
+  choices:[
+    {text:"前往灵界修炼场",next:"spirit_world_training"},
+    {text:"前往灵界坊市",next:"spirit_world_market"},
+    {text:"探索万灵秘境",next:"spirit_world_secret_realm"},
+    {text:"挑战天界",next:"celestial_world_intro"},
+    {text:"出城自由探索",next:"_wild_menu"},
+    {text:"返回所在城镇",next:"_wild_return"},
+    {text:"查看我的修仙历程（再触发结局）",next:"ending_review"},
+  ],
+  enter:{flag:"post_ending_hub"},
+},
+
+"ending_review":{
+  text:[
+    {type:"narration",content:"你回首修仙之路，往事历历在目。"},
+    {type:"system_msg",content:"你已完成一次修仙历程。若想重新选择结局，可在此触发。"},
+    {type:"dialogue",content:"道在何方？这一次，你的答案又是什么？"},
+  ],
+  choices:[
+    {text:"再次面对大道之选",next:"ending_choice"},
+    {text:"返回后日谈",next:"after_ending_hub"},
+  ],
 },
 
 // ==================== 灵界篇（从飞升后继续） ====================
@@ -1796,7 +2304,7 @@ const STORY = {
 },
 
 // ==================== 天南篇扩展 ====================
-"tiannan_explore":{
+"tiannan_free_explore":{
   text:[
     {type:"chapter_title",content:"天 南 · 修 仙 之 地"},
     {type:"narration",content:"天南修仙界地域辽阔，天南坊市城是其中最繁华的城市。你可以在城中交易、探索城外荒野、前往附近城镇。"},
@@ -1807,6 +2315,8 @@ const STORY = {
     {text:"前往长安城",next:"_return_to_wild_长安城"},
     {text:"前往太南谷",next:"_return_to_wild_太南谷"},
     {text:"寻找机缘",next:"tiannan_adventure"},
+    {text:"找张铁交付千年药草",next:"side_quest_zhangtie_deliver",condition:{questActive:"sq_zhangtie_herb",item:"thousand_year_ginseng"}},
+    {text:"寻找失踪的师妹陆云",next:"side_quest_missing_sister_complete",condition:{questActive:"sq_missing_sister"}},
     {text:"返回修炼",next:"cultivate_meditate"},
   ],
 },
@@ -1819,7 +2329,7 @@ const STORY = {
   choices:[
     {text:"请教修炼",next:"tiannan_huangfeng_learn"},
     {text:"交易物品",next:"_auction_menu"},
-    {text:"返回",next:"tiannan_explore"},
+    {text:"返回",next:"tiannan_free_explore"},
   ],
 },
 
@@ -1829,7 +2339,7 @@ const STORY = {
     {type:"system_msg",content:"获得经验！"},
   ],
   choices:[
-    {text:"返回",next:"tiannan_explore"},
+    {text:"返回",next:"tiannan_free_explore"},
   ],
   enter:{exp:200,comp:1},
 },
@@ -1841,7 +2351,7 @@ const STORY = {
   ],
   choices:[
     {text:"探索洞府",next:"tiannan_cave"},
-    {text:"返回",next:"tiannan_explore"},
+    {text:"返回",next:"tiannan_free_explore"},
   ],
 },
 
@@ -1851,7 +2361,7 @@ const STORY = {
   ],
   choices:[
     {text:"击杀狼妖",next:"combat_tiannan_wolf"},
-    {text:"撤退",next:"tiannan_explore"},
+    {text:"撤退",next:"tiannan_free_explore"},
   ],
 },
 
@@ -1867,9 +2377,9 @@ const STORY = {
     {type:"reward",content:"获得灵石、灵草和一枚筑基丹！"},
   ],
   choices:[
-    {text:"返回",next:"tiannan_explore"},
+    {text:"返回",next:"tiannan_free_explore"},
   ],
-  enter:{exp:150,stone:60,item:"foundation_pill"},
+  enter:{exp:150,stone:60,item:"foundation_pill",item2:"spirit_grass"},
 },
 
 "tiannan_cave_defeat":{
@@ -2188,7 +2698,7 @@ const STORY = {
   ],
   choices:[
     {text:"探索天南坊市城外荒野",next:"_wild_explore_天南坊市城"},
-    {text:"前往天南坊市城",next:"tiannan_explore"},
+    {text:"前往天南坊市城",next:"tiannan_free_explore"},
     {text:"前往长安城",next:"_return_to_wild_长安城"},
     {text:"前往太南谷",next:"_return_to_wild_太南谷"},
     {text:"寻找洞天福地",next:"tiannan_adventure"},
@@ -2247,7 +2757,6 @@ const STORY = {
     {text:"迎战金甲傀儡",next:"pmain_combat_puppet"},
     {text:"先撤退",next:"pmain_xutiandian_start"},
   ],
-  combat:{enemy:"star_palace_guard",onWin:"pmain_xutiandian_victory",onLose:"pmain_xutiandian_defeat"},
 },
 
 "pmain_combat_puppet":{
@@ -2258,8 +2767,8 @@ const STORY = {
 
 "pmain_xutiandian_victory":{
   text:[
-    {type:"narration",content:"你击败了金甲傀儡！在殿中深处，你找到了一枚虚天残图和数件古宝。"},
-    {type:"reward",content:"获得：虚天残图×1、古宝星辰砂、大量灵石！"},
+    {type:"narration",content:"你击败了金甲傀儡！在殿中深处，你找到了数件古宝和大量灵石。"},
+    {type:"reward",content:"获得：古宝星辰砂、大量灵石、5000经验！"},
     {type:"system_msg",content:"虚天殿探索完成！修为大幅提升。"},
   ],
   choices:[
@@ -2307,7 +2816,6 @@ const STORY = {
     {text:"迎战慕兰高手",next:"pmain_combat_mulan"},
     {text:"暂时撤退",next:"pmain_mulan_start"},
   ],
-  combat:{enemy:"mulan_beast_rider",onWin:"pmain_mulan_victory",onLose:"pmain_mulan_defeat"},
 },
 
 "pmain_combat_mulan":{
@@ -2360,8 +2868,8 @@ const STORY = {
 
 "pmain_mulan_recon_victory":{
   text:[
-    {type:"narration",content:"你击败守卫，夺取了慕兰族的物资和功法残卷！"},
-    {type:"reward",content:"获得慕兰族功法残卷、灵石！"},
+    {type:"narration",content:"你击败守卫，夺取了慕兰族的物资和稀有材料！"},
+    {type:"reward",content:"获得：星辰砂、600灵石、6000经验！"},
   ],
   choices:[
     {text:"返回",next:"pmain_mulan_start"},
@@ -2399,7 +2907,6 @@ const STORY = {
     {text:"迎战古魔残尸",next:"pmain_combat_demon"},
     {text:"撤退",next:"pmain_zhuimogu_start"},
   ],
-  combat:{enemy:"ancient_demon corpse",onWin:"pmain_zhuimogu_victory",onLose:"pmain_zhuimogu_defeat"},
 },
 
 "pmain_combat_demon":{
@@ -2411,8 +2918,8 @@ const STORY = {
 "pmain_zhuimogu_victory":{
   text:[
     {type:"narration",content:"你击败了古魔残尸！在谷底深处，你发现了一座上古洞府。"},
-    {type:"narration",content:"洞府中藏有上古魔修的传承和大量宝物。"},
-    {type:"reward",content:"获得：上古传承、混沌钟碎片、大量灵石！"},
+    {type:"narration",content:"洞府中藏有上古魔修的宝物和大量灵石。"},
+    {type:"reward",content:"获得：星辰砂、2000灵石、20000经验！"},
     {type:"system_msg",content:"坠魔谷探索完成！你的修为已臻至巅峰，可以尝试飞升了。"},
   ],
   choices:[
@@ -2463,5 +2970,661 @@ const STORY = {
     {text:"在灵界继续修炼",next:"cultivate_meditate"},
   ],
   enter:{exp:100000,stone:10000,achievement:"ascension"},
+  dynamicEnding:true,
 },
+
+"combat_bandit":{
+  text:[
+    {type:"danger",content:"山贼！手持钢刀，面目凶狠！"},
+    {type:"system_msg",content:"战斗开始！"},
+  ],
+  choices:[{text:"战斗中……",next:"combat_bandit"}],
+  combat:{enemy:"bandit",onWin:"after_bandit",onLose:"death_bandit"},
+},
+
+"combat_star_guard":{
+  text:[
+    {type:"danger",content:"星宫守卫！身披战甲，手持长矛！"},
+    {type:"system_msg",content:"战斗开始！"},
+  ],
+  choices:[{text:"战斗中……",next:"combat_star_guard"}],
+},
+
+"combat_void_loot":{
+  text:[
+    {type:"danger",content:"虚空兽！面目狰狞，空间之力涌动！"},
+    {type:"system_msg",content:"战斗开始！"},
+  ],
+  choices:[{text:"战斗中……",next:"combat_void_loot"}],
+},
+
+"combat_mulan_shaman":{
+  text:[
+    {type:"danger",content:"慕兰萨满！手持骨杖，周身巫术灵光！"},
+    {type:"system_msg",content:"战斗开始！"},
+  ],
+  choices:[{text:"战斗中……",next:"combat_mulan_shaman"}],
+},
+
+"combat_iron_bone":{
+  text:[
+    {type:"danger",content:"铁骨尸！铜皮铁骨，刀枪不入！"},
+    {type:"system_msg",content:"战斗开始！"},
+  ],
+  choices:[{text:"战斗中……",next:"combat_iron_bone"}],
+},
+
+"combat_demon_lord":{
+  text:[
+    {type:"danger",content:"坠魔谷魔主！魔气滔天，威压如山！"},
+    {type:"system_msg",content:"战斗开始！"},
+  ],
+  choices:[{text:"战斗中……",next:"combat_demon_lord"}],
+  combat:{enemy:"demon_lord",onWin:"demon_valley_boss",onLose:"death_demon2"},
+},
+
+"combat_tribulation":{
+  text:[
+    {type:"danger",content:"天劫雷轰！天雷降世，万物颤抖！"},
+    {type:"system_msg",content:"战斗开始！"},
+  ],
+  choices:[{text:"战斗中……",next:"combat_tribulation"}],
+},
+
+"combat_immortal_tribulation":{
+  text:[
+    {type:"danger",content:"仙劫降临！仙光万丈，天地变色！"},
+    {type:"system_msg",content:"战斗开始！"},
+  ],
+  choices:[{text:"战斗中……",next:"combat_immortal_tribulation"}],
+},
+
+"combat_secret_realm_beast":{
+  text:[
+    {type:"danger",content:"灵界灵兽！气息强大，虎视眈眈！"},
+    {type:"system_msg",content:"战斗开始！"},
+  ],
+  choices:[{text:"战斗中……",next:"combat_secret_realm_beast"}],
+},
+
+"combat_celestial_tribulation":{
+  text:[
+    {type:"danger",content:"天界天劫！九天雷动，仙威浩荡！"},
+    {type:"system_msg",content:"战斗开始！"},
+  ],
+  choices:[{text:"战斗中……",next:"combat_celestial_tribulation"}],
+},
+
+// ==================== 主线支线任务 ====================
+// 支线1：大师兄的千年药草
+"side_quest_zhangtie_herb":{
+  title:"支线·师兄的嘱托",
+  text:[
+    {type:"narration",content:"你问张铁是否有什么需要帮忙的。张铁犹豫片刻，开口道："},
+    {type:"dialogue",content:"韩师弟，不瞒你说，为兄最近在修炼一门功法，已到了突破瓶颈的关口，却需要一株千年药草来辅助。"},
+    {type:"dialogue",content:"我知道太南谷深处可能有此物，但那里妖兽凶猛，为兄一人去不了。你……可愿帮我这个忙？"},
+  ],
+  choices:[
+    {text:"答应帮忙寻找千年药草",next:"side_quest_zhangtie_accept",effect:{flag:"sq_zhangtie_herb_accepted",storyQuest:{id:"sq_zhangtie_herb",name:"大师兄的千年药草",desc:"为张铁寻找一株千年药草",area:"太南谷",areaName:"太南谷"}}},
+    {text:"婉拒，自己还有事",next:"after_boar"},
+  ],
+},
+
+"side_quest_zhangtie_accept":{
+  title:"支线·师兄的嘱托",
+  text:[
+    {type:"dialogue",content:"师弟，多谢你！千年药草一般在太南谷的深山里能找到，你若找到，给我带来，我传你一套防身功法！"},
+    {type:"system_msg",content:"✅ 任务已接取：大师兄的千年药草（前往太南谷寻找千年药草）"},
+  ],
+  choices:[
+    {text:"返回继续主线（任务已在任务面板，可随时前往太南谷）",next:"after_boar"},
+  ],
+  enter:{flag:"sq_zhangtie_herb_active"},
+},
+
+"side_quest_zhangtie_deliver":{
+  title:"支线·师兄的嘱托",
+  text:[
+    {type:"narration",content:"你带着千年药草回来找到张铁。张铁看到药草，喜出望外。"},
+    {type:"dialogue",content:"师弟，多谢你！这株药草对我至关重要。来，这是我答应传你的——铁骨功！"},
+    {type:"system_msg",content:"✅ 任务完成：大师兄的千年药草"},
+    {type:"system_msg",content:"学会：铁骨功！"},
+  ],
+  choices:[
+    {text:"交付千年药草，学习铁骨功",next:"huangfeng_choices",effect:{flag:"sq_zhangtie_herb_done",technique:"iron_bone_art",completeStoryQuest:"sq_zhangtie_herb"}},
+  ],
+},
+
+// 支线2：失踪的师妹
+"side_quest_missing_sister":{
+  title:"支线·失踪的师妹",
+  text:[
+    {type:"narration",content:"你向墨居仁师伯询问门中是否还有其他事情。"},
+    {type:"dialogue",content:"墨居仁眉头一皱：「近日，我门下一名叫陆云的弟子外出采药未归，怕是在七玄门外的野林中遇了险。你既然入门，便替我去找找她。」"},
+  ],
+  choices:[
+    {text:"接下寻找任务",next:"find_bottle",effect:{storyQuest:{id:"sq_missing_sister",name:"失踪的师妹",desc:"在野外寻找失踪的弟子陆云",area:"七玄门集镇",areaName:"七玄门集镇"}}},
+    {text:"稍后再说",next:"find_bottle"},
+  ],
+},
+
+// 支线3：炼丹材料收集
+"side_quest_yanying_pill":{
+  title:"支线·炼丹之助",
+  text:[
+    {type:"dialogue",content:"晏婴说她在炼制一种特殊丹药，需要3株灵草作为材料。如果你能帮忙收集，她愿意以丹药相赠。"},
+  ],
+  choices:[
+    {text:"答应收集灵草",next:"yan_ying_meet",effect:{storyQuest:{id:"sq_yanying_grass",name:"炼丹之助",desc:"为晏婴收集3株灵草",area:"七玄门集镇",areaName:"七玄门集镇"}}},
+    {text:"婉拒",next:"yan_ying_meet"},
+  ],
+},
+
+// 支线2完成：失踪的师妹
+"side_quest_missing_sister_complete":{
+  title:"支线·失踪的师妹",
+  text:[
+    {type:"narration",content:"你四处打探陆云的下落。终于，在七玄门外的一片野林深处，你找到了受伤的陆云。"},
+    {type:"dialogue",content:"多谢师兄相救！我以为再也回不去了……"},
+    {type:"narration",content:"你护送陆云回到七玄门。墨居仁师伯对你大加赞赏，赐你一枚筑基丹作为奖励。"},
+    {type:"system_msg",content:"✅ 任务完成：失踪的师妹"},
+    {type:"system_msg",content:"获得：筑基丹×1、灵石×50"},
+  ],
+  choices:[
+    {text:"继续修行",next:"huangfeng_choices",effect:{flag:"sq_missing_sister_done",item:"foundation_pill",stone:50,completeStoryQuest:"sq_missing_sister"}},
+  ],
+},
+
+// 支线3完成：炼丹之助
+"side_quest_yanying_complete":{
+  title:"支线·炼丹之助",
+  text:[
+    {type:"narration",content:"你带着3株灵草回到晏婴处。晏婴接过灵草，喜笑颜开。"},
+    {type:"dialogue",content:"韩郎，多谢你！这瓶补气丹送给你，是我的一点心意。日后若还需要灵草，尽管来找我。"},
+    {type:"system_msg",content:"✅ 任务完成：炼丹之助"},
+    {type:"system_msg",content:"获得：补气丹×3、灵石×30"},
+  ],
+  choices:[
+    {text:"与晏婴继续交往",next:"yan_ying_meet",effect:{flag:"sq_yanying_grass_done",item:"qi_pill",count:3,stone:30,completeStoryQuest:"sq_yanying_grass"}},
+  ],
+},
+
+// ============================================================
+// 墨大夫样板章节 · 多路径解决/隐秘行动/继承/双重真相/长期回响
+// 设计文档第十五章示范节点：验证整套系统
+// ============================================================
+
+"sq_modoctor_intro":{
+  chapter:"支线·墨府疑云",
+  text:[
+    {type:"chapter_title",content:"墨 府 疑 云"},
+    {type:"narration",content:"你听说墨居仁师伯年轻时人称「墨大夫」，曾在青牛山下行医多年，积攒了不少家产。"},
+    {type:"narration",content:"近来你注意到墨大夫行为有些古怪——他频繁接见外人，深夜书房灯火通明，偶有诡异药味从其居所飘出。"},
+    {type:"thought",content:"墨师伯似乎在暗中谋划什么。修仙界凶险，多一分了解便多一分把握。"},
+    {type:"system_msg",content:"支线任务开启：墨府疑云（多路径解决示范）"},
+  ],
+  choices:[
+    {text:"暗中调查墨大夫",next:"sq_modoctor_investigate",effect:{flag:"sq_modoctor_active",storyQuest:{id:"sq_modoctor",name:"墨府疑云",desc:"调查墨大夫的暗中谋划，决定如何处理此事",area:"qixuan",areaName:"七玄门"}}},
+    {text:"暂不介入",next:"_wild_return"},
+  ],
+},
+
+// 阶段一：前期观察
+"sq_modoctor_investigate":{
+  text:[
+    {type:"narration",content:"你开始暗中观察墨大夫的行踪。经过数日跟踪，你发现以下线索："},
+    {type:"narration",content:"1. 墨大夫常在深夜会见一名黑衣修士，此人修为不低于筑基期。"},
+    {type:"narration",content:"2. 墨府后院有一座药园，种满了罕见灵药，由两名药童看护。"},
+    {type:"narration",content:"3. 墨大夫有一名养女墨彩环，掌管府中账目，对墨大夫十分敬重。"},
+    {type:"narration",content:"4. 墨大夫书房中藏有大量医书丹方，其中不乏邪修功法残页。"},
+    {type:"thought",content:"看来墨大夫并非表面那般慈祥。他似乎在筹划某种邪术，可能涉及夺舍或采补。"},
+  ],
+  choices:[
+    {text:"继续深入调查（试探墨彩环）",next:"sq_modoctor_probe_caibuan"},
+    {text:"潜入书房搜集证据",next:"sq_modoctor_sneak_study"},
+    {text:"直接质问墨大夫",next:"sq_modoctor_confront_early"},
+    {text:"先去结交墨彩环建立关系",next:"sq_modoctor_befriend_caibuan"},
+  ],
+  enter:{flag:"modoctor_investigated"},
+},
+
+// 路径A：试探墨彩环
+"sq_modoctor_probe_caibuan":{
+  text:[
+    {type:"narration",content:"你找到墨彩环，旁敲侧击地询问墨大夫近况。"},
+    {type:"dialogue",content:"墨姑娘，近来师伯可好？我见他似乎操劳过度……"},
+    {type:"narration",content:"墨彩环神色微变，随即恢复如常。"},
+    {type:"dialogue",content:"父亲大人精力充沛，多谢韩兄弟关心。只是近来事务繁忙，不便见客。」 ——墨彩环语气中带着一丝警惕。"},
+    {type:"thought",content:"她的反应说明她知道些什么，但不愿透露。或许需要先取得她的信任。"},
+  ],
+  choices:[
+    {text:"继续追问",next:"sq_modoctor_caibuan_refuse"},
+    {text:"转而结交墨彩环",next:"sq_modoctor_befriend_caibuan"},
+    {text:"潜入书房搜集证据",next:"sq_modoctor_sneak_study"},
+  ],
+  enter:{flag:"probed_caibuan"},
+},
+
+"sq_modoctor_caibuan_refuse":{
+  text:[
+    {type:"dialogue",content:"墨姑娘，我总觉得师伯近来行为有异……你是否知道些什么？"},
+    {type:"narration",content:"墨彩环脸色一沉，语气转冷。"},
+    {type:"dialogue",content:"韩兄弟，父亲大人的事，自有父亲大人做主。你若无事，请回吧。」 ——她显然不愿多说。"},
+    {type:"thought",content:"操之过急了。她对我产生了戒心，日后行事需更加小心。"},
+  ],
+  choices:[
+    {text:"暂时退避",next:"sq_modoctor_investigate",effect:{flag:"caibuan_suspicious"}},
+  ],
+  enter:{flag:"caibuan_alienated"},
+},
+
+// 路径B：潜入书房
+"sq_modoctor_sneak_study":{
+  text:[
+    {type:"narration",content:"你趁夜色潜入墨大夫的书房。书房内陈设古朴，书架上摆满了医书丹方。"},
+    {type:"narration",content:"你在书案下发现一个暗格，里面藏着一本黑色封皮的册子——《夺舍秘术·残卷》。"},
+    {type:"danger",content:"册中记载：修炼此术者可夺他人肉身，延续寿元。但需修为相近、体质相合之人方可成功。"},
+    {type:"thought",content:"果然！墨大夫在修炼夺舍之术！他收我为徒，莫非……就是为了夺我的身体？！"},
+    {type:"narration",content:"你强压怒火，将册子放回原处。此时门外传来脚步声——"},
+  ],
+  choices:[
+    {text:"藏匿躲避",next:"sq_modoctor_hide_success"},
+    {text:"翻窗逃离",next:"sq_modoctor_flee_study"},
+  ],
+  enter:{flag:"found_evil_book"},
+},
+
+"sq_modoctor_hide_success":{
+  text:[
+    {type:"narration",content:"你迅速躲入书架后的阴影中。墨大夫推门而入，目光在书房中扫视一圈，似乎察觉到什么。"},
+    {type:"dialogue",content:"奇怪……似乎有人来过。」 ——墨大夫喃喃自语，随即锁好暗格离去。"},
+    {type:"system_msg",content:"你已掌握墨大夫修炼夺舍术的确凿证据。"},
+    {type:"thought",content:"证据到手。接下来该如何处置？是公开揭发、暗中反杀、还是……反客为主？"},
+  ],
+  choices:[
+    {text:"公开揭发墨大夫",next:"sq_modoctor_confront_public"},
+    {text:"设伏反杀墨大夫（原著路线）",next:"sq_modoctor_ambush_plan"},
+    {text:"暗中布局，夺取墨府",next:"sq_modoctor_secret_takeover"},
+    {text:"逃离七玄门",next:"sq_modoctor_flee_sect"},
+  ],
+},
+
+"sq_modoctor_flee_study":{
+  text:[
+    {type:"danger",content:"你翻窗时不慎碰倒花瓶，「哐当」一声巨响！"},
+    {type:"dialogue",content:"谁在那里！」 ——墨大夫的怒喝传来，一道凌厉的掌风袭来！"},
+    {type:"narration",content:"你被掌风扫中，受伤不轻，但侥幸逃出书房。"},
+    {type:"system_msg",content:"墨大夫已发现你的窥探！关系恶化，他可能对你动手。"},
+  ],
+  choices:[
+    {text:"先去疗伤，再做打算",next:"sq_modoctor_investigate",effect:{flag:"modoctor_hostile"}},
+  ],
+  enter:{flag:"caught_sneaking"},
+},
+
+// 路径C：结交墨彩环
+"sq_modoctor_befriend_caibuan":{
+  text:[
+    {type:"narration",content:"你决定先与墨彩环建立良好关系，或许日后能从她口中得知真相。"},
+    {type:"narration",content:"你时常帮墨彩环打理药园、分拣灵药，渐渐取得了她的信任。"},
+    {type:"dialogue",content:"韩兄弟，你为人诚恳，不似其他弟子那般浮躁。这株养神草送你，算是我的一点心意。」 ——墨彩环微笑道。"},
+    {type:"system_msg",content:"与墨彩环关系提升。你获得了她的信任。"},
+  ],
+  choices:[
+    {text:"试探她关于墨大夫的事",next:"sq_modoctor_caibuan_trust_reveal",condition:{flag:"caibuan_trust"}},
+    {text:"继续加深关系",next:"sq_modoctor_caibuan_deepen",effect:{flag:"caibuan_trust"}},
+    {text:"潜入书房搜集证据",next:"sq_modoctor_sneak_study"},
+  ],
+  enter:{flag:"caibuan_friend"},
+},
+
+"sq_modoctor_caibuan_deepen":{
+  text:[
+    {type:"narration",content:"你与墨彩环往来日深。她向你吐露了心事。"},
+    {type:"dialogue",content:"韩兄弟，实不相瞒……父亲大人近来变得很奇怪。他常在深夜与人密谈，还让我准备许多生魂丹的材料。我担心他……走了邪路。"},
+    {type:"thought",content:"她果然知道一些内情，而且对墨大夫的行为也感到不安。"},
+  ],
+  choices:[
+    {text:"告知她夺舍术的真相",next:"sq_modoctor_caibuan_ally",effect:{flag:"told_caibuan_truth"}},
+    {text:"继续隐瞒，自己处理",next:"sq_modoctor_investigate"},
+  ],
+  enter:{flag:"caibuan_trust"},
+},
+
+"sq_modoctor_caibuan_trust_reveal":{
+  text:[
+    {type:"narration",content:"你与墨彩环深谈。她终于向你吐露了心中的忧虑。"},
+    {type:"dialogue",content:"韩兄弟，父亲大人近来……似乎在修炼某种邪术。我曾在书房看到一本黑色册子，上面记载着夺舍之法。"},
+    {type:"dialogue",content:"我担心他的目标……是我们这些弟子。但我无能为力，只能装作不知。"},
+    {type:"thought",content:"墨彩环提供了关键证词。现在证据确凿。"},
+  ],
+  choices:[
+    {text:"与她商议对策",next:"sq_modoctor_caibuan_ally"},
+    {text:"独自行动",next:"sq_modoctor_investigate"},
+  ],
+},
+
+"sq_modoctor_caibuan_ally":{
+  text:[
+    {type:"narration",content:"你将夺舍术的真相告知墨彩环。她先是震惊，随即神色复杂。"},
+    {type:"dialogue",content:"……我早有预感。韩兄弟，你打算如何处置？无论你做什么决定，我都支持你。但若要动手，请不要伤害无辜。"},
+    {type:"system_msg",content:"墨彩环成为你的盟友。她将协助你处理墨府事宜。"},
+    {type:"thought",content:"有了墨彩环的配合，我的选择更多了。"},
+  ],
+  choices:[
+    {text:"公开揭发墨大夫",next:"sq_modoctor_confront_public"},
+    {text:"设伏反杀墨大夫",next:"sq_modoctor_ambush_plan"},
+    {text:"暗中布局，夺取墨府",next:"sq_modoctor_secret_takeover"},
+    {text:"劝墨大夫改邪归正",next:"sq_modoctor_negotiate"},
+  ],
+  enter:{flag:"caibuan_ally"},
+},
+
+// 路径D：直接质问（高风险）
+"sq_modoctor_confront_early":{
+  text:[
+    {type:"narration",content:"你直接找到墨大夫，质问他的所作所为。"},
+    {type:"dialogue",content:"师伯，弟子听闻您在修炼夺舍之术，可有此事？"},
+    {type:"narration",content:"墨大夫脸色骤变，随即恢复慈祥笑容。"},
+    {type:"dialogue",content:"韩立，你听信了什么谣言？为师乃是正道修士，怎会修炼邪术？不过……你既然起了疑心，为师也不便留你了。"},
+    {type:"danger",content:"墨大夫突然出手！一道黑气直袭你的天灵盖！"},
+    {type:"system_msg",content:"墨大夫发动突袭！你被逼入绝境！"},
+  ],
+  choices:[
+    {text:"拼死一战",next:"sq_modoctor_emergency_combat"},
+  ],
+  enter:{flag:"modoctor_hostile"},
+},
+
+"sq_modoctor_emergency_combat":{
+  text:[
+    {type:"danger",content:"墨大夫露出狰狞面目：「既然你发现了，就别怪为师心狠！你的身体，正合我用！」"},
+  ],
+  choices:[{text:"战斗",next:"sq_modoctor_emergency_combat"}],
+  combat:{enemy:"mo_doctor_desperate",onWin:"sq_modoctor_kill_result",onLose:"sq_modoctor_death"},
+},
+
+// 结局1：公开揭发
+"sq_modoctor_confront_public":{
+  text:[
+    {type:"narration",content:"你带着证据来到七玄门正殿，当众揭发墨大夫修炼夺舍邪术。"},
+    {type:"dialogue",content:"各位长老！墨居仁修炼夺舍之术，意图谋害弟子！这是从他书房搜出的邪术册子！"},
+    {type:"narration",content:"七玄门长老们传阅册子，面色凝重。墨大夫脸色铁青，却仍强辩。"},
+    {type:"dialogue",content:"这是污蔑！此册乃是老夫收缴的邪物，正准备销毁！」 ——墨大夫狡辩道。"},
+    {type:"narration",content:"然而墨彩环出庭作证，加上你掌握的证据，长老们最终决定将墨大夫逐出七玄门。"},
+    {type:"system_msg",content:"✅ 墨大夫被公开揭发并逐出七玄门。"},
+    {type:"reward",content:"获得：声望提升、墨府药园（公开继承）、500灵石"},
+  ],
+  choices:[
+    {text:"接管墨府产业",next:"sq_modoctor_inherit_public"},
+  ],
+  enter:{flag:"modoctor_exposed",stone:500,achievement:"exposer"},
+},
+
+"sq_modoctor_inherit_public":{
+  text:[
+    {type:"narration",content:"墨大夫被逐出后，七玄门长老会决议将其产业交由你打理，作为揭发有功的奖赏。"},
+    {type:"narration",content:"你正式接管墨府：药园、医书、丹方、灵石，以及墨大夫的「神医弟子」名号。"},
+    {type:"dialogue",content:"韩师弟，墨府就交给你了。希望你能善用这些资源，造福门派。」 ——掌门长老说道。"},
+    {type:"system_msg",content:"你公开继承了墨府产业，获得合法身份。"},
+    {type:"thought",content:"公开路线虽然名声好，但墨大夫逃脱了，日后可能寻仇。"},
+  ],
+  choices:[
+    {text:"墨府事务已了",next:"_wild_return",effect:{flag:"sq_modoctor_done",completeStoryQuest:"sq_modoctor",item:"medical_book",stone:300}},
+  ],
+  enter:{flag:"inherited_publicly"},
+},
+
+// 结局2：设伏反杀（原著路线）
+"sq_modoctor_ambush_plan":{
+  text:[
+    {type:"narration",content:"你决定效仿原著，设伏反杀墨大夫。你假意不知真相，继续跟随墨大夫修炼，暗中准备。"},
+    {type:"thought",content:"墨大夫，你以为我是任你宰割的羔羊？殊不知，猎人与猎物的身份，即将逆转。"},
+    {type:"narration",content:"数月后，墨大夫认为时机成熟，邀请你到密室「传功」。这正是他动手的信号。"},
+    {type:"dialogue",content:"韩立，为师今日传你一门秘法，需在密室中闭关修炼……"},
+    {type:"thought",content:"来了！就是现在！"},
+  ],
+  choices:[
+    {text:"将计就计，反杀墨大夫",next:"sq_modoctor_ambush_combat"},
+  ],
+  enter:{flag:"ambush_planned"},
+},
+
+"sq_modoctor_ambush_combat":{
+  text:[
+    {type:"danger",content:"密室中，墨大夫突然发难：「韩立，你的身体归我了！」"},
+    {type:"narration",content:"你早有准备，祭出法器，与墨大夫展开殊死搏斗！"},
+  ],
+  choices:[{text:"战斗",next:"sq_modoctor_ambush_combat"}],
+  combat:{enemy:"mo_doctor",onWin:"sq_modoctor_kill_result",onLose:"sq_modoctor_death"},
+},
+
+"sq_modoctor_kill_result":{
+  text:[
+    {type:"chapter_title",content:"反 杀 成 功"},
+    {type:"narration",content:"墨大夫倒在血泊中，双目圆睁，死不瞑目。"},
+    {type:"dialogue",content:"你……你竟然……」 ——墨大夫临死前难以置信。"},
+    {type:"thought",content:"师伯，是你先要害我。修仙界弱肉强食，我不杀你，你便杀我。"},
+    {type:"system_msg",content:"✅ 墨大夫已被反杀。"},
+    {type:"narration",content:"现在需要处理善后——如何向外界解释墨大夫的死？"},
+  ],
+  choices:[
+    {text:"宣称修炼事故",next:"sq_modoctor_narrative_accident"},
+    {text:"宣称仇家所为",next:"sq_modoctor_narrative_enemy"},
+    {text:"如实禀报门派",next:"sq_modoctor_narrative_truth"},
+  ],
+  enter:{flag:"killed_modoctor",achievement:"slayer"},
+},
+
+// 双重真相：公开叙事选择
+"sq_modoctor_narrative_accident":{
+  text:[
+    {type:"narration",content:"你对外宣称墨大夫在闭关修炼时走火入魔，不幸身亡。"},
+    {type:"dialogue",content:"师伯他……修炼时出了意外，我来时已无力回天。」 ——你面露悲痛。"},
+    {type:"narration",content:"七玄门长老们信以为真，为墨大夫举行了葬礼。墨彩环虽怀疑，但没有证据。"},
+    {type:"system_msg",content:"公开叙事：「修炼事故」。可信度较高。"},
+    {type:"system_msg",content:"真实真相：玩家反杀墨大夫（已记录在世界事实中，永不删除）。"},
+    {type:"thought",content:"暂时瞒过了众人。但墨彩环的眼神……她似乎起了疑心。"},
+  ],
+  choices:[
+    {text:"接管墨府产业",next:"sq_modoctor_inherit_secret",effect:{flag:"narrative_accident"}},
+  ],
+  enter:{flag:"lied_about_death"},
+},
+
+"sq_modoctor_narrative_enemy":{
+  text:[
+    {type:"narration",content:"你伪造现场，制造墨大夫被仇家暗杀的假象。"},
+    {type:"dialogue",content:"师伯曾与一名邪修结怨，那邪修趁师伯闭关时下手……我来时已晚。」 ——你神情悲愤。"},
+    {type:"narration",content:"七玄门派人追查「邪修」，当然一无所获。墨彩环对此说法半信半疑。"},
+    {type:"system_msg",content:"公开叙事：「仇家暗杀」。可信度中等，留有破绽。"},
+    {type:"system_msg",content:"真实真相：玩家反杀墨大夫（已记录在世界事实中，永不删除）。"},
+    {type:"thought",content:"这番布置虽然周全，但伪造的痕迹终归是隐患。"},
+  ],
+  choices:[
+    {text:"接管墨府产业",next:"sq_modoctor_inherit_secret",effect:{flag:"narrative_enemy"}},
+  ],
+  enter:{flag:"fabricated_enemy_story"},
+},
+
+"sq_modoctor_narrative_truth":{
+  text:[
+    {type:"narration",content:"你如实向七玄门长老禀报墨大夫修炼邪术、意图夺舍的经过。"},
+    {type:"dialogue",content:"师伯修炼夺舍邪术，意图谋害弟子。弟子迫于无奈，将其击杀。请长老明察！"},
+    {type:"narration",content:"长老们查验现场和证据后，确认了你的说法。你被判定为正当防卫，无罪。"},
+    {type:"system_msg",content:"公开叙事：「正当防卫」。可信度极高。"},
+    {type:"system_msg",content:"真实真相与公开叙事一致。"},
+    {type:"reward",content:"获得：声望提升、正当防卫嘉奖"},
+  ],
+  choices:[
+    {text:"接管墨府产业",next:"sq_modoctor_inherit_public",effect:{flag:"narrative_truth"}},
+  ],
+  enter:{flag:"told_truth"},
+},
+
+// 隐秘继承
+"sq_modoctor_inherit_secret":{
+  text:[
+    {type:"narration",content:"你以「墨大夫关门弟子」的身份接管了墨府。药园、医书、丹方、灵石，尽数落入你手。"},
+    {type:"dialogue",content:"韩兄弟，父亲大人的后事……就劳你操持了。」 ——墨彩环强忍悲痛。"},
+    {type:"narration",content:"你获得了墨大夫的「神医弟子」身份，以及他的病人关系网。"},
+    {type:"system_msg",content:"你隐秘继承了墨府产业，但秘密压力增加。"},
+    {type:"thought",content:"产业到手，但墨彩环的怀疑、旧日的书信、知情者的存在……都是隐患。"},
+  ],
+  choices:[
+    {text:"墨府事务已了",next:"sq_modoctor_longterm_echo",effect:{flag:"sq_modoctor_done",completeStoryQuest:"sq_modoctor",item:"medical_book",stone:300}},
+  ],
+  enter:{flag:"inherited_secretly"},
+},
+
+// 结局3：暗中夺取（邪道路线）
+"sq_modoctor_secret_takeover":{
+  text:[
+    {type:"narration",content:"你决定不杀墨大夫，而是暗中布局，夺取他的产业和身份。"},
+    {type:"thought",content:"杀了墨大夫只会惹来麻烦。不如让他「自愿」交出一切，然后……处理掉。"},
+    {type:"narration",content:"你与墨彩环配合，暗中在墨大夫的丹药中下毒，使其修为衰退。"},
+    {type:"narration",content:"数月后，墨大夫修为大跌，不得不将墨府事务交由你打理。"},
+    {type:"dialogue",content:"韩立，老夫年老体衰，墨府就交给你了……照顾好彩环。」 ——墨大夫虚弱地说。"},
+    {type:"danger",content:"现在墨大夫已无反抗之力。你打算如何处置他？"},
+  ],
+  choices:[
+    {text:"毒杀灭口",next:"sq_modoctor_poison_kill",effect:{flag:"poisoned_modoctor"}},
+    {text:"放他离去",next:"sq_modoctor_let_go",effect:{flag:"spared_modoctor"}},
+    {text:"夺取他的修为（吞噬路线）",next:"sq_modoctor_devour",effect:{flag:"devoured_modoctor"}},
+  ],
+  enter:{flag:"took_over_secretly"},
+},
+
+"sq_modoctor_poison_kill":{
+  text:[
+    {type:"narration",content:"你加大毒药剂量，墨大夫在睡梦中无声死去。"},
+    {type:"dialogue",content:"韩兄弟，父亲大人他……走得安详。」 ——墨彩环并不知情。"},
+    {type:"system_msg",content:"墨大夫被毒杀。公开叙事：「病逝」。"},
+    {type:"system_msg",content:"真实真相：玩家毒杀墨大夫（已记录在世界事实中，永不删除）。"},
+    {type:"thought",content:"干净利落。但毒杀的痕迹……日后若有人验尸，便会露馅。"},
+  ],
+  choices:[
+    {text:"接管墨府",next:"sq_modoctor_inherit_secret"},
+  ],
+  enter:{flag:"poisoned_modoctor_dead"},
+},
+
+"sq_modoctor_let_go":{
+  text:[
+    {type:"narration",content:"你放墨大夫离去。他带着一身残废的修为，消失在夜色中。"},
+    {type:"dialogue",content:"韩立……你比老夫想象中更狠。记住，今日之恩，他日必报。」 ——墨大夫留下一句话后离去。"},
+    {type:"system_msg",content:"墨大夫被放走。他可能日后寻仇，也可能就此隐居。"},
+    {type:"thought",content:"放虎归山，后患无穷。但我已夺得墨府，他已无力回天。"},
+  ],
+  choices:[
+    {text:"接管墨府",next:"sq_modoctor_inherit_secret"},
+  ],
+  enter:{flag:"modoctor_fled"},
+},
+
+"sq_modoctor_devour":{
+  text:[
+    {type:"danger",content:"你运转吞噬功法，强行吸收墨大夫残存的修为！"},
+    {type:"narration",content:"墨大夫的修为如潮水般涌入你的经脉。你的修为暴涨，但经脉隐隐作痛。"},
+    {type:"system_msg",content:"获得大量修为！但法力驳杂，因果负荷增加。"},
+    {type:"thought",content:"异种法力在体内冲撞……需要日后洗炼。这就是捷径的代价。"},
+  ],
+  choices:[
+    {text:"接管墨府",next:"sq_modoctor_inherit_secret"},
+  ],
+  enter:{flag:"devoured_modoctor_power",exp:3000},
+},
+
+// 结局4：逃离
+"sq_modoctor_flee_sect":{
+  text:[
+    {type:"narration",content:"你深知自己修为低微，不是墨大夫的对手，决定逃离七玄门。"},
+    {type:"narration",content:"你连夜收拾细软，趁夜色离开。墨大夫发现后派人追杀，但你侥幸逃脱。"},
+    {type:"system_msg",content:"你逃离了七玄门。墨大夫对你怀恨在心，日后可能派人追杀。"},
+    {type:"thought",content:"留得青山在，不怕没柴烧。终有一日，我会回来清算这笔账。"},
+  ],
+  choices:[
+    {text:"浪迹天涯",next:"_wild_return",effect:{flag:"fled_sect",completeStoryQuest:"sq_modoctor"}},
+  ],
+  enter:{flag:"became_fugitive"},
+},
+
+// 结局5：谈判劝善
+"sq_modoctor_negotiate":{
+  text:[
+    {type:"narration",content:"你找到墨大夫，开门见山地表明自己已知夺舍之事，但不想与之为敌。"},
+    {type:"dialogue",content:"师伯，弟子知晓您的秘密。但弟子无意揭发，只想与师伯做个交易。"},
+    {type:"narration",content:"墨大夫沉默良久，最终叹了口气。"},
+    {type:"dialogue",content:"韩立，你比老夫想象中聪明。说吧，你想要什么？」 ——墨大夫语气复杂。"},
+    {type:"dialogue",content:"弟子想要墨府的医书丹方，以及师伯不再谋害弟子的承诺。作为交换，弟子会保守秘密。"},
+    {type:"narration",content:"墨大夫权衡利弊后，答应了你的条件。"},
+    {type:"system_msg",content:"✅ 与墨大夫达成协议。获得医书丹方，但秘密成为双方筹码。"},
+    {type:"thought",content:"暂时相安无事。但墨大夫的心思难测，这协议能维持多久？"},
+  ],
+  choices:[
+    {text:"墨府事务已了",next:"_wild_return",effect:{flag:"sq_modoctor_done",completeStoryQuest:"sq_modoctor",item:"medical_book",stone:200}},
+  ],
+  enter:{flag:"negotiated_deal"},
+},
+
+// 长期回响：多年后旧事重提
+"sq_modoctor_longterm_echo":{
+  text:[
+    {type:"narration",content:"墨府事务了结后，你以为一切尘埃落定。然而数年后——"},
+    {type:"narration",content:"一日，你在整理墨大夫遗物时，发现一封未寄出的信件。信中提到墨大夫曾将一份夺舍秘术的完整版藏在别处。"},
+    {type:"danger",content:"若此信被他人发现，你的秘密可能暴露！"},
+    {type:"thought",content:"必须找到这份完整版秘术，要么销毁，要么……据为己有。"},
+    {type:"system_msg",content:"长期回响触发：旧信件可能导致秘密暴露。"},
+  ],
+  choices:[
+    {text:"销毁信件和秘术",next:"sq_modoctor_echo_destroy",effect:{flag:"destroyed_evidence"}},
+    {text:"据为己有（学习夺舍术）",next:"sq_modoctor_echo_learn",effect:{flag:"learned_seize_technique"}},
+    {text:"暂时搁置",next:"_wild_return",effect:{flag:"ignored_evidence"}},
+  ],
+},
+
+"sq_modoctor_echo_destroy":{
+  text:[
+    {type:"narration",content:"你找到藏匿的秘术完整版，将其付之一炬。"},
+    {type:"system_msg",content:"证据已销毁。秘密压力降低。"},
+    {type:"thought",content:"隐患已除。但墨大夫的旧友若知此事，恐怕还会追查……"},
+  ],
+  choices:[
+    {text:"继续修行",next:"_wild_return"},
+  ],
+},
+
+"sq_modoctor_echo_learn":{
+  text:[
+    {type:"danger",content:"你抵御不住诱惑，开始研习夺舍秘术。"},
+    {type:"system_msg",content:"你学会了夺舍术（邪道）。但因果负荷大增，神魂稳定度下降。"},
+    {type:"thought",content:"此术虽邪，却是一条保命的后路。但我必须谨慎使用，否则必遭反噬。"},
+  ],
+  choices:[
+    {text:"继续修行",next:"_wild_return"},
+  ],
+  enter:{flag:"learned_evil_art"},
+},
+
+// 死亡结局
+"sq_modoctor_death":{
+  text:[
+    {type:"danger",content:"你败在了墨大夫手中。他夺走了你的身体，你的意识渐渐消散……"},
+    {type:"system_msg",content:"你被夺舍了。但天道给了你一次重来的机会。"},
+  ],
+  choices:[{text:"重来之",next:"sq_modoctor_intro"}],
+},
+
+// ==================== 战斗桩节点（占位，防止过渡窗口点击导致卡死） ====================
+"blood_trial_combat1":{text:[{type:"system_msg",content:"战斗中……"}],choices:[]},
+"blood_trial_combat2":{text:[{type:"system_msg",content:"战斗中……"}],choices:[]},
+"blood_trial_combat3":{text:[{type:"system_msg",content:"战斗中……"}],choices:[]},
+"chaos_sea_war_combat1":{text:[{type:"system_msg",content:"战斗中……"}],choices:[]},
+"chaos_sea_war_combat2":{text:[{type:"system_msg",content:"战斗中……"}],choices:[]},
+"chaos_sea_war_combat3":{text:[{type:"system_msg",content:"战斗中……"}],choices:[]},
+"mulan_final_war_combat1":{text:[{type:"system_msg",content:"战斗中……"}],choices:[]},
+"mulan_final_war_combat2":{text:[{type:"system_msg",content:"战斗中……"}],choices:[]},
+"mulan_final_war_combat3":{text:[{type:"system_msg",content:"战斗中……"}],choices:[]},
+"void_floor3_combat1":{text:[{type:"system_msg",content:"战斗中……"}],choices:[]},
+"void_floor3_combat2":{text:[{type:"system_msg",content:"战斗中……"}],choices:[]},
 };
