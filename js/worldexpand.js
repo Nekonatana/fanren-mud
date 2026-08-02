@@ -233,19 +233,8 @@ Object.assign(WorldSystem, {
       interactBtns.push('<button class="btn-combat" onclick="WorldSystem.showNPCSocialPanel(\'' + npcId + '\')">👥 查看关系</button>');
     }
     
-    if (npc.isFriend && !npc.isFemale === false && !s.spouses.includes(npcId) && npc.mood >= 80 && s.spouses.length < 3) {
-      interactBtns.push('<button class="btn-combat" style="border-color:var(--pink);color:var(--pink)" onclick="WorldSystem.proposeMarriage(\'' + npcId + '\')">求婚</button>');
-    }
-    if (npc.isFriend && !npc.isFemale === true && !s.spouses.includes(npcId) && npc.mood >= 80 && s.spouses.length < 3) {
-      interactBtns.push('<button class="btn-combat" style="border-color:var(--pink);color:var(--pink)" onclick="WorldSystem.proposeMarriage(\'' + npcId + '\')">求婚</button>');
-    }
-    // 简化：只要好感>=80且是异性且未结婚
-    if (!npc.isFemale !== !s.isFemale !== true && npc.mood >= 80 && !s.spouses.includes(npcId) && s.spouses.length < 3) {
-      // 已在上面处理
-    }
-    // 简化判断：异性且好感足够
+    // 异性判断+好感度>=80+未已婚判断
     if (npc.mood >= 80 && !s.spouses.includes(npcId) && s.spouses.length < 3) {
-      // 检查性别不同（假设玩家为男性，除非设置了s.isFemale）
       const playerFemale = s.isFemale || false;
       if (npc.isFemale !== playerFemale) {
         interactBtns.push('<button class="btn-combat" style="border-color:var(--pink);color:var(--pink)" onclick="WorldSystem.proposeMarriage(\'' + npcId + '\')">求婚</button>');
@@ -474,6 +463,8 @@ Object.assign(WorldSystem, {
     const s = Game.state;
     const npc = s.npcList.find(n => n.id === npcId);
     if (!npc) return;
+    if (!s.spouses) s.spouses = [];
+    if (s.spouses.includes(npcId)) { UI.toast("你们已是道侣", "info"); return; }
     
     // 检查是否可以无视好感度结为道侣
     // 1. 强迫双修导致孽缘羁绊（极端BUFF）
@@ -550,9 +541,15 @@ Object.assign(WorldSystem, {
         '<button class="btn-combat" onclick="UI.closeModal()">喜悦</button>'
       );
       
-      // 应用道侣加成
-      s.atk = Math.floor(s.atk * 1.1);
-      s.def = Math.floor(s.def * 1.1);
+      // 应用道侣加成（记录每个道侣给的加成，避免重复乘算）
+      if (!s.spouseAtkBonus) s.spouseAtkBonus = 0;
+      if (!s.spouseDefBonus) s.spouseDefBonus = 0;
+      const atkAdd = Math.floor(s.atk * 0.1);
+      const defAdd = Math.floor(s.def * 0.1);
+      s.atk += atkAdd;
+      s.def += defAdd;
+      s.spouseAtkBonus += atkAdd;
+      s.spouseDefBonus += defAdd;
     } else {
       npc.mood = Math.max(50, npc.mood - 10);
       UI.toast(npc.name + "犹豫了一下，似乎觉得还需要更多时间。好感度-10", "danger");
