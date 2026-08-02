@@ -187,18 +187,22 @@ const ACHIEVEMENTS = {
 
 // ===== 敌人数据 =====
 const ENEMIES = {
-  "wild_boar":{name:"野猪妖",hp:80,atk:8,def:3,exp:20,stone:5,drop:"spirit_grass",dropRate:0.2},
-  "bandit":{name:"山贼",hp:120,atk:12,def:5,exp:30,stone:10,drop:"healing_pill",dropRate:0.3},
-  "wolf_demon":{name:"狼妖",hp:200,atk:20,def:8,exp:50,stone:15,drop:"spirit_grass",dropRate:0.3},
-  "iron_bone":{name:"铁骨尸",hp:300,atk:30,def:20,exp:80,stone:25,drop:"qi_pill",dropRate:0.2},
-  "flame_rat":{name:"火鼠妖",hp:400,atk:40,def:15,exp:100,stone:30,drop:"flame_gu",dropRate:0.05},
-  "sea_beast":{name:"深海兽",hp:800,atk:60,def:30,exp:200,stone:50,drop:"star_sand",dropRate:0.3},
-  "star_palace_guard":{name:"星宫守卫",hp:1200,atk:80,def:50,exp:300,stone:80,drop:"blue_silk_sword",dropRate:0.05},
-  "void_beast":{name:"虚空兽",hp:2000,atk:150,def:80,exp:500,stone:150,drop:"void_gu",dropRate:0.05},
-  "mulan_shaman":{name:"慕兰萨满",hp:3000,atk:200,def:120,exp:800,stone:300,drop:"dragon_blood",dropRate:0.2},
-  "demon_lord":{name:"坠魔谷魔主",hp:5000,atk:300,def:150,exp:1500,stone:500,drop:"heaven_demon",dropRate:0.1},
-  "tribulation_lightning":{name:"天劫雷",hp:99999,atk:500,def:200,exp:3000,stone:0,drop:null,dropRate:0},
-  "immortal_tribulation":{name:"仙劫",hp:999999,atk:5000,def:500,exp:50000,stone:0,drop:null,dropRate:0},
+  // ===== 序章~第二章（练气期） =====
+  "wild_boar":{name:"野猪妖",hp:150,atk:14,def:6,exp:35,stone:8,drop:"spirit_grass",dropRate:0.25},
+  "bandit":{name:"山贼",hp:220,atk:20,def:10,exp:55,stone:18,drop:"healing_pill",dropRate:0.35},
+  "wolf_demon":{name:"狼妖",hp:380,atk:32,def:14,exp:95,stone:28,drop:"spirit_grass",dropRate:0.35},
+  "iron_bone":{name:"铁骨尸",hp:560,atk:48,def:32,exp:160,stone:48,drop:"qi_pill",dropRate:0.25},
+  "flame_rat":{name:"火鼠妖",hp:720,atk:62,def:24,exp:200,stone:55,drop:"flame_gu",dropRate:0.08},
+  // ===== 第三章~第四章（筑基期） =====
+  "sea_beast":{name:"深海兽",hp:1500,atk:95,def:48,exp:380,stone:90,drop:"star_sand",dropRate:0.35},
+  "star_palace_guard":{name:"星宫守卫",hp:2200,atk:130,def:80,exp:560,stone:150,drop:"blue_silk_sword",dropRate:0.08},
+  "void_beast":{name:"虚空兽",hp:3800,atk:240,def:130,exp:950,stone:280,drop:"void_gu",dropRate:0.08},
+  // ===== 第五章~第六章（结丹期） =====
+  "mulan_shaman":{name:"慕兰萨满",hp:5600,atk:320,def:200,exp:1500,stone:550,drop:"dragon_blood",dropRate:0.25},
+  "demon_lord":{name:"坠魔谷魔主",hp:9500,atk:480,def:240,exp:2800,stone:950,drop:"heaven_demon",dropRate:0.15},
+  // ===== 第七章~第八章（元婴/化神期） =====
+  "tribulation_lightning":{name:"天劫雷",hp:150000,atk:780,def:320,exp:5500,stone:0,drop:null,dropRate:0},
+  "immortal_tribulation":{name:"仙劫",hp:1500000,atk:7800,def:780,exp:95000,stone:0,drop:null,dropRate:0},
 };
 
 // ===== 副本/地点数据 =====
@@ -244,41 +248,74 @@ const ENDINGS = {
 
 // ===== 新增敌人（高难度） =====
 const ENEMIES_EXTRA = {
-  // 七玄门野外
-  "iron_ape":{name:"铁臂猿",hp:150,atk:15,def:10,exp:35,stone:8,drop:"spirit_grass",dropRate:0.3},
-  "poison_snake":{name:"毒牙蛇",hp:120,atk:18,def:6,exp:30,stone:6,drop:"healing_pill",dropRate:0.2},
-  "stone_golem":{name:"石巨人",hp:500,atk:25,def:30,exp:100,stone:30,drop:"iron_sword",dropRate:0.1},
-  // 天南野外
-  "blood_wolf":{name:"血目狼妖",hp:400,atk:35,def:15,exp:120,stone:40,drop:"spirit_grass",dropRate:0.4},
-  "evil_cultivator":{name:"邪修",hp:350,atk:40,def:20,exp:150,stone:60,drop:"healing_pill",dropRate:0.3},
-  "thousand_year_bat":{name:"千年蝠王",hp:800,atk:60,def:30,exp:300,stone:100,drop:"blue_robe",dropRate:0.1},
-  // 乱星海野外
-  "deep_sea_kraken":{name:"深海章鱼怪",hp:1500,atk:90,def:50,exp:400,stone:120,drop:"star_sand",dropRate:0.4},
-  "storm_bird":{name:"风暴雷鸟",hp:1000,atk:120,def:40,exp:350,stone:100,drop:"thunder_seal",dropRate:0.05},
-  "sea_dragon":{name:"蛟龙",hp:3000,atk:180,def:100,exp:1000,stone:300,drop:"dragon_blood",dropRate:0.3},
-  // 虚天殿新增
-  "void_puppet":{name:"虚天傀儡",hp:2500,atk:160,def:120,exp:600,stone:200,drop:"purple_armor",dropRate:0.1},
-  "ancient_guardian":{name:"上古守护者",hp:5000,atk:250,def:150,exp:1500,stone:500,drop:"void_heaven_blade",dropRate:0.05},
-  // 慕兰草原
-  "mulan_beast_rider":{name:"慕兰兽骑兵",hp:2500,atk:200,def:100,exp:600,stone:200,drop:"healing_pill",dropRate:0.3},
-  "mulan_war_chief":{name:"慕兰大战将",hp:5000,atk:280,def:150,exp:1200,stone:400,drop:"dragon_pattern_blade",dropRate:0.05},
-  // 坠魔谷新增
-  "demon_general":{name:"魔将",hp:8000,atk:400,def:200,exp:2500,stone:800,drop:"heaven_demon",dropRate:0.15},
-  "demon_bat_swarm":{name:"魔蝠群",hp:3000,atk:200,def:50,exp:800,stone:200,drop:"qi_pill",dropRate:0.5},
-  "ancient_demon corpse":{name:"古魔残尸",hp:10000,atk:500,def:300,exp:3000,stone:1000,drop:"void_gu",dropRate:0.05},
-  // 灵界新增
-  "spirit_beast":{name:"灵界灵兽",hp:50000,atk:2000,def:1000,exp:20000,stone:5000,drop:"great_purity",dropRate:0.1},
-  "spirit_realm_bandit":{name:"灵界散修",hp:80000,atk:3000,def:1500,exp:30000,stone:8000,drop:"space_ring",dropRate:0.1},
-  "spirit_realm_guardian":{name:"灵界守护者",hp:200000,atk:5000,def:3000,exp:80000,stone:20000,drop:"immortal_strike",dropRate:0.05},
-  "celestial_beast":{name:"天界仙兽",hp:500000,atk:10000,def:5000,exp:200000,stone:50000,drop:"heaven_gu",dropRate:0.05},
-  "celestial_guardian":{name:"天界守卫",hp:1000000,atk:20000,def:10000,exp:500000,stone:100000,drop:"great_purity",dropRate:0.1},
-  "void_ancient_demon":{name:"虚空古魔",hp:2000000,atk:50000,def:20000,exp:1000000,stone:200000,drop:"void_gu",dropRate:0.2},
+  // 七玄门野外（练气期）
+  "iron_ape":{name:"铁臂猿",hp:280,atk:24,def:16,exp:65,stone:15,drop:"spirit_grass",dropRate:0.35},
+  "poison_snake":{name:"毒牙蛇",hp:220,atk:28,def:10,exp:55,stone:12,drop:"healing_pill",dropRate:0.25},
+  "stone_golem":{name:"石巨人",hp:900,atk:40,def:50,exp:190,stone:55,drop:"iron_sword",dropRate:0.15},
+  // 天南野外（练气~筑基）
+  "blood_wolf":{name:"血目狼妖",hp:720,atk:55,def:24,exp:230,stone:75,drop:"spirit_grass",dropRate:0.45},
+  "evil_cultivator":{name:"邪修",hp:620,atk:62,def:32,exp:280,stone:110,drop:"healing_pill",dropRate:0.35},
+  "thousand_year_bat":{name:"千年蝠王",hp:1500,atk:95,def:48,exp:560,stone:180,drop:"blue_robe",dropRate:0.15},
+  // 乱星海野外（筑基~结丹）
+  "deep_sea_kraken":{name:"深海章鱼怪",hp:2800,atk:140,def:80,exp:750,stone:220,drop:"star_sand",dropRate:0.45},
+  "storm_bird":{name:"风暴雷鸟",hp:1800,atk:185,def:65,exp:650,stone:185,drop:"thunder_seal",dropRate:0.08},
+  "sea_dragon":{name:"蛟龙",hp:5600,atk:280,def:160,exp:1900,stone:560,drop:"dragon_blood",dropRate:0.35},
+  // 虚天殿（结丹期）
+  "void_puppet":{name:"虚天傀儡",hp:4600,atk:250,def:200,exp:1100,stone:380,drop:"purple_armor",dropRate:0.15},
+  "ancient_guardian":{name:"上古守护者",hp:9200,atk:380,def:240,exp:2800,stone:920,drop:"void_heaven_blade",dropRate:0.08},
+  // 慕兰草原（结丹~元婴）
+  "mulan_beast_rider":{name:"慕兰兽骑兵",hp:4600,atk:320,def:160,exp:1100,stone:380,drop:"healing_pill",dropRate:0.35},
+  "mulan_war_chief":{name:"慕兰大战将",hp:9200,atk:430,def:240,exp:2200,stone:760,drop:"dragon_pattern_blade",dropRate:0.08},
+  // 坠魔谷（元婴期）
+  "demon_general":{name:"魔将",hp:15000,atk:620,def:320,exp:4600,stone:1500,drop:"heaven_demon",dropRate:0.2},
+  "demon_bat_swarm":{name:"魔蝠群",hp:5600,atk:320,def:80,exp:1500,stone:380,drop:"qi_pill",dropRate:0.55},
+  "ancient_demon corpse":{name:"古魔残尸",hp:18500,atk:780,def:480,exp:5600,stone:1850,drop:"void_gu",dropRate:0.08},
+  // ===== 主线扩展新增敌人 =====
+  // 第二章·黄枫谷试炼
+  "yellow_maple_disciple":{name:"黄枫谷内门弟子",hp:480,atk:42,def:22,exp:180,stone:40,drop:"healing_pill",dropRate:0.3},
+  "yellow_maple_elder":{name:"黄枫谷执法长老",hp:1800,atk:120,def:80,exp:680,stone:200,drop:"blue_robe",dropRate:0.12},
+  // 第三章·血色试炼
+  "blood_trial_disciple":{name:"血色试炼参赛者",hp:850,atk:75,def:38,exp:280,stone:50,drop:"healing_pill",dropRate:0.35},
+  "blood_trial_beast":{name:"试炼禁地妖兽",hp:1600,atk:130,def:70,exp:520,stone:120,drop:"spirit_grass",dropRate:0.4},
+  "blood_trial_boss":{name:"血色试炼守关者",hp:2800,atk:200,def:120,exp:1100,stone:280,drop:"foundation_pill",dropRate:0.2},
+  // 第四章·乱星海海战
+  "star_palace_patrol":{name:"星宫巡逻队",hp:2200,atk:160,def:95,exp:680,stone:180,drop:"star_sand",dropRate:0.3},
+  "star_palace_captain":{name:"星宫千夫长",hp:4200,atk:240,def:160,exp:1500,stone:380,drop:"star_moon_wheel",dropRate:0.08},
+  "chaos_sea_overlord":{name:"乱星海霸主",hp:7800,atk:340,def:220,exp:2600,stone:680,drop:"star_pendant",dropRate:0.12},
+  // 第五章·虚天殿深处
+  "void_floor2_guard":{name:"虚天殿二层守卫",hp:5200,atk:300,def:200,exp:1800,stone:480,drop:"purple_armor",dropRate:0.12},
+  "void_floor3_puppet":{name:"虚天殿金甲傀儡",hp:8800,atk:420,def:300,exp:3200,stone:880,drop:"void_heaven_blade",dropRate:0.1},
+  "void_spirit_remnant":{name:"虚天残灵",hp:12000,atk:520,def:380,exp:4800,stone:1500,drop:"void_gu",dropRate:0.15},
+  // 第六章·慕兰大战
+  "mulan_scout":{name:"慕兰斥候",hp:3800,atk:280,def:140,exp:1300,stone:280,drop:"healing_pill",dropRate:0.3},
+  "mulan_sorcerer":{name:"慕兰大巫师",hp:9800,atk:480,def:280,exp:3200,stone:980,drop:"dragon_blood",dropRate:0.2},
+  "mulan_khan_guard":{name:"慕兰可汗亲卫",hp:13500,atk:580,def:380,exp:4800,stone:1500,drop:"dragon_pattern_blade",dropRate:0.1},
+  // 第七章·坠魔谷深处
+  "demon_valley_bat":{name:"魔蝠王",hp:8200,atk:420,def:160,exp:2400,stone:580,drop:"qi_pill",dropRate:0.4},
+  "demon_valley_general":{name:"古魔麾下魔将",hp:16500,atk:680,def:420,exp:5200,stone:1600,drop:"heaven_demon",dropRate:0.18},
+  "demon_valley_heart":{name:"古魔之心",hp:24000,atk:880,def:560,exp:8800,stone:2800,drop:"void_gu",dropRate:0.25},
+  // 第八章·飞升前劫
+  "heart_demon":{name:"心魔",hp:32000,atk:780,def:480,exp:9800,stone:0,drop:"great_purity",dropRate:0.3},
+  "mortal_tribulation":{name:"凡尘劫",hp:68000,atk:980,def:520,exp:18000,stone:0,drop:null,dropRate:0},
+  // 灵界新增（飞升后过渡）
+  "spirit_beast":{name:"灵界灵兽",hp:95000,atk:3200,def:1600,exp:38000,stone:9500,drop:"great_purity",dropRate:0.12},
+  "spirit_realm_bandit":{name:"灵界散修",hp:150000,atk:4800,def:2400,exp:56000,stone:15000,drop:"space_ring",dropRate:0.12},
+  "spirit_realm_guardian":{name:"灵界守护者",hp:380000,atk:8200,def:5200,exp:150000,stone:38000,drop:"immortal_strike",dropRate:0.08},
+  "spirit_realm_general":{name:"灵界天将",hp:620000,atk:12000,def:7800,exp:240000,stone:62000,drop:"immortal_strike",dropRate:0.1},
+  // 天界（终极）
+  "celestial_beast":{name:"天界仙兽",hp:950000,atk:16000,def:8000,exp:380000,stone:95000,drop:"heaven_gu",dropRate:0.08},
+  "celestial_guardian":{name:"天界守卫",hp:1800000,atk:32000,def:16000,exp:950000,stone:180000,drop:"great_purity",dropRate:0.12},
+  "celestial_emperor":{name:"天界大帝",hp:3200000,atk:78000,def:32000,exp:1800000,stone:380000,drop:"heaven_gu",dropRate:0.25},
+  "void_ancient_demon":{name:"虚空古魔真身",hp:3800000,atk:88000,def:38000,exp:2000000,stone:420000,drop:"void_gu",dropRate:0.3},
   // 随机遇敌 - 按修为等级
-  "wild_beast_lq":{name:"野兽",hp:100,atk:10,def:5,exp:15,stone:3,drop:"spirit_grass",dropRate:0.2},
-  "bandit_lq":{name:"劫修",hp:200,atk:20,def:10,exp:40,stone:20,drop:"healing_pill",dropRate:0.2},
-  "demon_cultivator_zj":{name:"魔修",hp:1500,atk:100,def:60,exp:400,stone:100,drop:"qi_pill",dropRate:0.3},
-  "rogue_cultivator_yy":{name:"散修",hp:15000,atk:1000,def:500,exp:5000,stone:1000,drop:"healing_pill",dropRate:0.3},
-  "spirit_demon_hh":{name:"灵魔",hp:200000,atk:8000,def:4000,exp:50000,stone:10000,drop:"great_purity",dropRate:0.05},
+  "wild_beast_lq":{name:"野兽",hp:180,atk:16,def:8,exp:28,stone:6,drop:"spirit_grass",dropRate:0.25},
+  "bandit_lq":{name:"劫修",hp:380,atk:32,def:16,exp:75,stone:38,drop:"healing_pill",dropRate:0.25},
+  "demon_cultivator_zj":{name:"魔修",hp:2800,atk:160,def:95,exp:750,stone:180,drop:"qi_pill",dropRate:0.35},
+  "rogue_cultivator_yy":{name:"散修",hp:28000,atk:1800,def:950,exp:9500,stone:1800,drop:"healing_pill",dropRate:0.35},
+  "spirit_demon_hh":{name:"灵魔",hp:380000,atk:13000,def:6800,exp:95000,stone:18000,drop:"great_purity",dropRate:0.08},
+  // ===== 墨大夫样板章节敌人 =====
+  "mo_doctor":{name:"墨大夫（夺舍真身）",hp:1800,atk:150,def:90,exp:800,stone:300,drop:"medical_book",dropRate:0.8},
+  "mo_doctor_desperate":{name:"墨大夫（狗急跳墙）",hp:1200,atk:180,def:70,exp:600,stone:200,drop:"healing_pill",dropRate:0.5},
 };
 // 合并到ENEMIES
 Object.assign(ENEMIES, ENEMIES_EXTRA);
@@ -310,6 +347,8 @@ const ITEMS_EXTRA = {
   "celestial_armor":{name:"天衣",type:"armor",grade:5,def:1000,desc:"天界仙人所穿，万法不侵。",mpCost:50},
   "destiny_ring":{name:"命运之环",type:"accessory",grade:5,def:100,maxMp:2000,desc:"掌控命运之力的神环。"},
   "creation_cauldron":{name:"造化鼎",type:"artifact",grade:5,atk:500,def:500,desc:"开天辟地时的造化之鼎，可炼万物。",mpCost:100,skill:"造化吞天"},
+  // ===== 墨大夫样板章节物品 =====
+  "medical_book":{name:"墨府医书丹方",type:"material",grade:3,desc:"墨大夫毕生心血所著的医书丹方，记载了诸多罕见药方与炼丹心得。"},
 };
 Object.assign(ITEMS, ITEMS_EXTRA);
 
@@ -446,5 +485,8 @@ const ACHIEVEMENTS_EXTRA = {
   "celestial_champion":{name:"天界至尊",desc:"击败天界守护者。",icon:"⚡"},
   "alchemist":{name:"炼丹初成",desc:"成功炼制一颗丹药。",icon:"⚗️"},
   "power_up":{name:"强力一击",desc:"单次攻击造成超过10000伤害。",icon:"💥"},
+  // ===== 墨大夫样板章节成就 =====
+  "exposer":{name:"揭发者",desc:"公开揭发墨大夫的阴谋。",icon:"📢"},
+  "slayer":{name:"反杀者",desc:"设伏反杀墨大夫。",icon:"⚔️"},
 };
 Object.assign(ACHIEVEMENTS, ACHIEVEMENTS_EXTRA);

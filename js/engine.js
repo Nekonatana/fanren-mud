@@ -1495,20 +1495,43 @@ const Game = {
   },
   
   // ===== 战斗系统 =====
-  startCombat(combatData) {
-    const enemy = ENEMIES[combatData.enemy];
+  // 支持三种调用方式：
+  // 1. startCombat({enemy: "enemyId", onWin, onLose})  — 原有格式，enemy为ENEMIES字典key
+  // 2. startCombat({enemy: enemyObj, onWin, onLose})   — enemy为直接敌人对象
+  // 3. startCombat(enemyObj, onWin, onLose)             — 直接传入敌人对象+回调节点
+  // 4. startCombat(enemyObj, {onWin, onLose})           — 直接传入敌人对象+选项对象
+  startCombat(combatData, onWin, onLose) {
+    let enemy, winNode, loseNode;
+
+    if (combatData && combatData.enemy) {
+      // 格式1或2：combatData.enemy 为字符串(ID)或对象
+      enemy = typeof combatData.enemy === 'string' ? ENEMIES[combatData.enemy] : combatData.enemy;
+      winNode = combatData.onWin;
+      loseNode = combatData.onLose;
+    } else if (combatData && combatData.hp) {
+      // 格式3或4：combatData本身就是敌人对象
+      enemy = combatData;
+      if (onWin && typeof onWin === 'object') {
+        winNode = onWin.onWin;
+        loseNode = onWin.onLose;
+      } else {
+        winNode = onWin;
+        loseNode = onLose;
+      }
+    }
+
     if (!enemy) return;
-    
+
     this.combatState = {
       enemy: {...enemy},
       enemyHp: enemy.hp,
-      enemyMaxHp: enemy.hp,
-      onWin: combatData.onWin,
-      onLose: combatData.onLose,
+      enemyMaxHp: enemy.maxHp || enemy.hp,
+      onWin: winNode,
+      onLose: loseNode,
       turn: 0,
       log: [],
     };
-    
+
     UI.showCombat(this.combatState);
     this.combatLog("遭遇" + enemy.name + "！战斗开始！", "system");
   },
@@ -1738,14 +1761,24 @@ const Game = {
     const isWild = !!cs.isWild;
     // 野外战斗：不在这里发奖励/不清空 combatState，留给 wildVictory 统一处理（防重复发放 + 防 null 读取）
     if (!isWild) {
-      // 奖励
-      this.gainExp(cs.enemy.exp);
-      s.spiritStones += cs.enemy.stone;
-      this.combatLog("获得" + cs.enemy.exp + "经验，" + cs.enemy.stone + "灵石。", "system");
+      // 奖励（兼容 stone/stones 两种属性名）
+      var enemyExp = cs.enemy.exp || 0;
+      var enemyStone = cs.enemy.stone || cs.enemy.stones || 0;
+      this.gainExp(enemyExp);
+      s.spiritStones = (s.spiritStones || 0) + enemyStone;
+      this.combatLog("获得" + enemyExp + "经验，" + enemyStone + "灵石。", "system");
 
       // 掉落（支持 ITEMS / GU_WORMS / TECHNIQUES 三种类型掉落）
-      if (cs.enemy.drop && Math.random() < cs.enemy.dropRate) {
+      // 兼容 drop/dropRate（单物品）和 drops（多物品数组）两种格式
+      if (cs.enemy.drop && cs.enemy.dropRate !== undefined && Math.random() < cs.enemy.dropRate) {
         this._applyDrop(cs.enemy.drop, "system");
+      }
+      // 副本敌人使用 drops 数组（随机掉一个）
+      if (Array.isArray(cs.enemy.drops) && cs.enemy.drops.length > 0) {
+        var dropItem = cs.enemy.drops[Math.floor(Math.random() * cs.enemy.drops.length)];
+        if (Math.random() < 0.5) {
+          this._applyDrop(dropItem, "system");
+        }
       }
     }
 

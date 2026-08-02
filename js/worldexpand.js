@@ -1840,11 +1840,14 @@ Object.assign(WorldSystem, {
       if (!npc.isAlive) return;
       // 年龄增长
       npc.age = (npc.age || 30) + yearsAdvanced;
-      
+
+      // 安全获取修为阶段
+      var npcCultIdx = (typeof npc.cultLevel === 'number' && npc.cultLevel >= 0 && npc.cultLevel < CULT_LEVELS.length) ? npc.cultLevel : 0;
+
       // 检查寿命
       if (!npc.lifespan) {
-        const stage = npc.cultLevel >= 0 ? CULT_LEVELS[npc.cultLevel].stage : 0;
-        npc.lifespan = LIFESPAN_TABLE[stage].baseLifespan;
+        var stage = CULT_LEVELS[npcCultIdx] ? CULT_LEVELS[npcCultIdx].stage : 0;
+        npc.lifespan = (LIFESPAN_TABLE && LIFESPAN_TABLE[stage]) ? LIFESPAN_TABLE[stage].baseLifespan : 100;
       }
       if (npc.age >= npc.lifespan) {
         npc.isAlive = false;
@@ -1854,18 +1857,20 @@ Object.assign(WorldSystem, {
         const spIdx = s.spouses.indexOf(npc.id);
         if (spIdx >= 0) s.spouses.splice(spIdx, 1);
       }
-      
+
       // 修为随时间增长（小概率）
-      if (Math.random() < 0.01 * days && npc.cultLevel < CULT_LEVELS.length - 1) {
-        npc.cultLevel++;
-        npc.cultName = CULT_LEVELS[npc.cultLevel].name;
+      if (Math.random() < 0.01 * days && npcCultIdx < CULT_LEVELS.length - 1) {
+        npcCultIdx++;
+        npc.cultLevel = npcCultIdx;
+        npc.cultName = CULT_LEVELS[npcCultIdx].name;
       }
-      
+
       // 随机移动到其他区域
       if (Math.random() < 0.005 * days) {
         const loc = Object.keys(WORLD_MAP);
         const newArea = loc[Math.floor(Math.random() * loc.length)];
-        if (WORLD_MAP[newArea] && CULT_LEVELS[npc.cultLevel].stage >= WORLD_MAP[newArea].reqStage) {
+        var npcStage = CULT_LEVELS[npcCultIdx] ? CULT_LEVELS[npcCultIdx].stage : 0;
+        if (WORLD_MAP[newArea] && npcStage >= WORLD_MAP[newArea].reqStage) {
           npc.area = newArea;
         }
       }

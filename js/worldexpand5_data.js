@@ -48,54 +48,65 @@ const PLACE_DEFS = {
 // ===== 各地点拥有的场所配置 =====
 // key = WORLD_MAP的key, value = 场所类型列表
 const LOCATION_PLACES = {
-  // 宗门
-  "\u4E03\u7384\u95E8": ["sect_hall","scripture_lib","training_ground","alchemy_room","herb_garden","disciple_quart","back_mountain","mission_hall"],
-  "\u9EC4\u67AB\u8C37": ["sect_hall","scripture_lib","training_ground","alchemy_room","herb_garden","disciple_quart","back_mountain","mission_hall"],
+  // 宗门/集镇
+  "七玄门集镇": ["sect_hall","scripture_lib","training_ground","alchemy_room","herb_garden","disciple_quart","back_mountain","mission_hall","residential","market","inn"],
+  "黄枫谷": ["sect_hall","scripture_lib","training_ground","alchemy_room","herb_garden","disciple_quart","back_mountain","mission_hall"],
   // 城镇
-  "\u5929\u5357\u574A\u5E02\u57CE": ["residential","gov_office","academy","market","inn","teahouse","temple","arena","city_gate"],
-  "\u4E71\u661F\u6D77\u6E21\u53E3": ["residential","market","inn","teahouse","dock","temple"],
-  // 野外
-  "\u5929\u5357\u8352\u91CE": ["residential","market","temple"],
+  "天南坊市城": ["residential","gov_office","academy","market","inn","teahouse","temple","arena","city_gate"],
+  "长安城": ["imperial_palace","ministry_war","ministry_person","exam_hall","main_street","barracks","grand_temple","residential","inn","teahouse","market","arena"],
+  "太南谷": ["residential","market","inn","teahouse","temple","academy","alchemy_room","herb_garden"],
+  "乱星海渡口": ["residential","market","inn","teahouse","dock","temple"],
   // 遗迹
-  "\u865A\u5929\u6BBF": ["back_mountain","temple"],
+  "虚天殿": ["back_mountain","temple"],
   // 草原/战区
-  "\u6155\u5170\u8349\u539F": ["chief_tent","shaman_altar","pasture","warrior_pit","trade_post"],
+  "慕兰草原": ["chief_tent","shaman_altar","pasture","warrior_pit","trade_post"],
   // 坠魔谷
-  "\u5760\u9B54\u8C37": ["shrine","back_mountain"],
+  "坠魔谷": ["shrine","back_mountain"],
   // 灵界
-  "\u7075\u754C": ["sect_hall","scripture_lib","training_ground","treasure_pav","disciple_quart","market","inn"],
+  "灵界": ["sect_hall","scripture_lib","training_ground","treasure_pav","disciple_quart","market","inn"],
   // 仙界
-  "\u4ED9\u754C": ["imperial_palace","scripture_lib","treasure_pav","disciple_quart","market","inn","grand_temple"],
+  "仙界": ["imperial_palace","scripture_lib","treasure_pav","disciple_quart","market","inn","grand_temple"],
 };
 
 // ===== 场所名称覆盖（特殊宗门/地点用不同名称） =====
 const PLACE_NAME_OVERRIDES = {
-  "\u4E03\u7384\u95E8": {
-    sect_hall:"\u4E03\u7384\u95E8\u4E3B\u6BBF", scripture_lib:"\u85CF\u7ECF\u9601", training_ground:"\u6F14\u6B66\u573A",
-    alchemy_room:"\u70BC\u4E39\u623F", herb_garden:"\u4E03\u7384\u836F\u562D", back_mountain:"\u540E\u5C71\u5BC6\u6797",
-    mission_hall:"\u4EFB\u52A1\u5802",
+  "七玄门集镇": {
+    sect_hall:"七玄门主殿", scripture_lib:"藏经阁", training_ground:"演武场",
+    alchemy_room:"炼丹房", herb_garden:"七玄药圃", back_mountain:"后山密林",
+    mission_hall:"任务堂", residential:"集镇民居", market:"集镇集市", inn:"集镇客栈",
   },
-  "\u9EC4\u67AB\u8C37": {
-    sect_hall:"\u9EC4\u67AB\u8C37\u4E3B\u6BBF", scripture_lib:"\u4E07\u6728\u7ECF\u9601", training_ground:"\u7075\u6728\u6F14\u6B66\u573A",
-    alchemy_room:"\u7075\u836F\u56ED", herb_garden:"\u9EC4\u67AB\u836F\u562D", back_mountain:"\u7075\u6728\u6797",
-    mission_hall:"\u4EFB\u52A1\u5802",
+  "黄枫谷": {
+    sect_hall:"黄枫谷主殿", scripture_lib:"万木经阁", training_ground:"灵木演武场",
+    alchemy_room:"灵药园", herb_garden:"黄枫药圃", back_mountain:"灵木林",
+    mission_hall:"任务堂",
   },
-  "\u5929\u5357\u574A\u5E02\u57CE": {
-    residential:"\u574A\u5E02\u6C11\u5C45", gov_office:"\u574A\u5E02\u5E97", academy:"\u4E91\u6EAA\u4E66\u9662",
-    market:"\u574A\u5E02\u5E7F\u573A", inn:"\u4ED9\u8E2A\u679C\u5BA2\u6808", teahouse:"\u542C\u96E8\u8336\u697C",
-    temple:"\u57CE\u9685\u5EFA", arena:"\u6597\u6CD5\u573A", city_gate:"\u5357\u57CE\u95E8",
+  "天南坊市城": {
+    residential:"坊市民居", gov_office:"坊市店", academy:"云溪书院",
+    market:"坊市广场", inn:"仙踪客栈", teahouse:"听雨茶楼",
+    temple:"城隍庙", arena:"斗法场", city_gate:"南城门",
   },
-  "\u4E71\u661F\u6D77\u6E21\u53E3": {
-    residential:"\u6E14\u6C11\u8857", market:"\u6D77\u6E2F\u5546\u8857", inn:"\u6D77\u98CE\u5BA2\u6808",
-    teahouse:"\u6D77\u9C9C\u8336\u697C", dock:"\u4E71\u661F\u7801\u5934", temple:"\u6D77\u795E\u5E99",
+  "长安城": {
+    imperial_palace:"大明宫", ministry_war:"兵部衙门", ministry_person:"吏部衙门",
+    exam_hall:"科举考场", main_street:"朱雀大街", barracks:"禁军大营",
+    grand_temple:"大慈恩寺", residential:"长安民居", inn:"长安客栈",
+    teahouse:"聚贤茶楼", market:"东市", arena:"校场",
   },
-  "\u7075\u754C": {
-    sect_hall:"\u5929\u5B97\u5C01\u9B54\u6BBF", scripture_lib:"\u4E07\u7075\u85CF\u4E66\u9601", training_ground:"\u7075\u754C\u6F14\u6B66\u573A",
-    treasure_pav:"\u7075\u5B9D\u9601", market:"\u7075\u754C\u96C6\u5E02", inn:"\u4ED9\u4E91\u697C",
+  "太南谷": {
+    residential:"谷民居", market:"谷中集市", inn:"幽谷客栈",
+    teahouse:"清心茶舍", temple:"灵泉庙", academy:"太南书院",
+    alchemy_room:"太南丹房", herb_garden:"灵草园",
   },
-  "\u4ED9\u754C": {
-    imperial_palace:"\u4ED9\u5BAB", scripture_lib:"\u5929\u4E66\u9601", treasure_pav:"\u5929\u5B9D\u9601",
-    market:"\u4ED9\u5E02", inn:"\u7476\u6C60\u5BAB", grand_temple:"\u5929\u5BAB",
+  "乱星海渡口": {
+    residential:"渔民街", market:"海港商街", inn:"海风客栈",
+    teahouse:"海鲜茶楼", dock:"乱星码头", temple:"海神庙",
+  },
+  "灵界": {
+    sect_hall:"天宗封魔殿", scripture_lib:"万灵藏书阁", training_ground:"灵界演武场",
+    treasure_pav:"灵宝阁", market:"灵界集市", inn:"仙云楼",
+  },
+  "仙界": {
+    imperial_palace:"仙宫", scripture_lib:"天书阁", treasure_pav:"天宝阁",
+    market:"仙市", inn:"瑶池宫", grand_temple:"天宫",
   },
 };
 
@@ -130,7 +141,7 @@ const LOCATION_QUEST_POOL = [
   {type:"submit_material", title:"\u732E\u4E0A\u94C1\u77FF", desc:"\u70BC\u5668\u574A\u9700\u8981\u94C1\u77FF\u7740\u706C\u70BC\u5236\u6CD5\u5668\uFF0C\u8BF7\u52A9\u52D8\u91C7\u94C1\u77FF\u3002", minStage:0, requiredItem:"iron_ore", requiredCount:3, rewardStones:200, rewardExp:120, rewardItem:"iron_sword"},
   {type:"submit_material", title:"\u6536\u96C6\u5996\u517D\u76AE", desc:"\u70BC\u5236\u9632\u5177\u9700\u8981\u5996\u517D\u76AE\uFF0C\u8BF7\u52A9\u730E\u67405\u5F20\u5996\u517D\u76AE\u3002", minStage:0, requiredItem:"beast_pelt", requiredCount:5, rewardStones:250, rewardExp:150, rewardItem:"leather_armor"},
   // 检查地点类
-  {type:"check_location", title:"\u5DE1\u67E5\u8352\u91CE", desc:"\u6700\u8FD1\u8352\u91CE\u4E2D\u602A\u4E8B\u9891\u53D1\uFF0C\u8BF7\u524D\u5F80\u67E5\u770B\u60C5\u51B5\u3002", minStage:0, targetLocation:"\u5929\u5357\u8352\u91CE", rewardStones:200, rewardExp:150, rewardItem:"healing_pill"},
+  {type:"check_location", title:"\u5DE1\u67E5\u8352\u91CE", desc:"\u6700\u8FD1\u57CE\u5916\u8352\u91CE\u4E2D\u602A\u4E8B\u9891\u53D1\uFF0C\u8BF7\u524D\u5F80\u67E5\u770B\u60C5\u51B5\u3002", minStage:0, targetLocation:"\u5929\u5357\u574A\u5E02\u57CE", rewardStones:200, rewardExp:150, rewardItem:"healing_pill"},
   {type:"check_location", title:"\u63A2\u67E5\u53E4\u8FF9", desc:"\u9644\u8FD1\u53D1\u73B0\u4E86\u53E4\u4FEE\u58EB\u9057\u8FF9\uFF0C\u8BF7\u524D\u5F80\u67E5\u770B\u3002", minStage:1, targetLocation:"\u865A\u5929\u6BBF", rewardStones:400, rewardExp:300, rewardItem:"foundation_pill"},
   {type:"check_location", title:"\u524D\u5F80\u6D77\u6E2F", desc:"\u6D77\u6E2F\u51FA\u73B0\u6D77\u517D\uFF0C\u8BF7\u524D\u5F80\u67E5\u770B\u3002", minStage:1, targetLocation:"\u4E71\u661F\u6D77\u6E21\u53E3", rewardStones:300, rewardExp:200, rewardItem:"qi_pill"},
   {type:"check_location", title:"\u4FA6\u67E5\u8349\u539F", desc:"\u6155\u5170\u8349\u539F\u6709\u5F02\u52A8\uFF0C\u8BF7\u524D\u5F80\u4FA6\u67E5\u3002", minStage:2, targetLocation:"\u6155\u5170\u8349\u539F", rewardStones:500, rewardExp:400, rewardItem:"foundation_pill"},
@@ -138,10 +149,8 @@ const LOCATION_QUEST_POOL = [
 ];
 
 // ===== 新增世界地图地点 =====
+// 注：长安城已由 worlddata.js 统一定义（含王朝建筑与副本区域），此处不再重复定义
 const NEW_WORLD_MAP_ENTRIES = {
-  "\u957F\u5B89\u57CE": {name:"\u957F\u5B89\u57CE", x:45, y:35, type:"city", desc:"\u5927\u5510\u56FD\u90FD\uFF0C\u7687\u57CE\u5A01\u4E25\uFF0C\u767E\u4F0D\u671D\u5929\u4E0B\u3002", reqStage:0,
-    subAreas:["\u7687\u5BAB","\u6731\u96C0\u5927\u8857","\u592A\u5B66","\u5927\u660E\u5BAB","\u4E1C\u5E02","\u897F\u5E02"],
-    connections:["\u5929\u5357\u574A\u5E02\u57CE","\u6D1B\u9633\u57CE","\u5317\u72C4\u8349\u539F","\u5357\u86EE\u4E1B\u6797","\u897F\u57DF\u8BF8\u56FD"]},
   "\u6D1B\u9633\u57CE": {name:"\u6D1B\u9633\u57CE", x:55, y:30, type:"city", desc:"\u5927\u5510\u4E1C\u90FD\uFF0C\u7E41\u534E\u4E0D\u8F93\u957F\u5B89\u3002", reqStage:0,
     subAreas:["\u6D1B\u9633\u5BAB","\u8001\u57CE\u533A","\u9F99\u95E8\u77F3\u7A9F","\u6D1B\u6C34\u6E2F"],
     connections:["\u957F\u5B89\u57CE","\u4E1C\u6FD1\u6276\u6851"]},
@@ -160,11 +169,8 @@ const NEW_WORLD_MAP_ENTRIES = {
 };
 
 // ===== 新增城镇定义 =====
+// 注：长安城已由 worlddata.js TOWNS 统一定义，此处不再重复定义
 const NEW_TOWN_ENTRIES = {
-  "\u957F\u5B89\u57CE": {
-    name:"\u957F\u5B89\u57CE", region:"\u957F\u5B89\u57CE", desc:"\u5927\u5510\u56FD\u90FD\uFF0C\u7687\u57CE\u5A01\u4E25\uFF0C\u767E\u4F0D\u671D\u5929\u4E0B\u3002\u4FEE\u58EB\u4E0E\u51E1\u4EBA\u5171\u5904\uFF0C\u7E41\u534E\u65E0\u6BD4\u3002", reqStage:0,
-    shops:["\u4E39\u836F\u94FA","\u5175\u5668\u94FA","\u9632\u5177\u94FA","\u9970\u54C1\u94FA","\u6CD5\u5B9D\u94FA","\u6742\u8D27\u94FA","\u62CD\u5356\u884C","\u5BA2\u6808","\u8336\u9986"],
-  },
   "\u6D1B\u9633\u57CE": {
     name:"\u6D1B\u9633\u57CE", region:"\u6D1B\u9633\u57CE", desc:"\u5927\u5510\u4E1C\u90FD\uFF0C\u7E41\u534E\u4E0D\u8F93\u957F\u5B89\u3002", reqStage:0,
     shops:["\u4E39\u836F\u94FA","\u5175\u5668\u94FA","\u9632\u5177\u94FA","\u6742\u8D27\u94FA","\u5BA2\u6808","\u8336\u9986"],
@@ -242,9 +248,7 @@ Object.assign(WORLD_MAP, NEW_WORLD_MAP_ENTRIES);
 Object.assign(TOWNS, NEW_TOWN_ENTRIES);
 
 // ===== 更新现有地点的连接，使新地点可从世界地图导航到达 =====
-if (WORLD_MAP["\u5929\u5357\u574A\u5E02\u57CE"]) {
-  WORLD_MAP["\u5929\u5357\u574A\u5E02\u57CE"].connections.push("\u957F\u5B89\u57CE");
-}
+// 注：天南坊市城已在 worlddata.js 中包含长安城连接，此处跳过避免重复
 if (WORLD_MAP["\u6155\u5170\u8349\u539F"]) {
   WORLD_MAP["\u6155\u5170\u8349\u539F"].connections.push("\u5317\u72C4\u8349\u539F");
 }

@@ -223,6 +223,7 @@ const WorldSystem = {
       maxHp: hp,
       atk: atk,
       def: def,
+      spd: 8 + Math.floor(Math.random() * 6),
       items: items,
       stones: stones,
       area: area,
@@ -230,7 +231,35 @@ const WorldSystem = {
       isFriend: false,
       relationType: null,
       mood: 0, // 初始好感度为0，由calculateInitialAffinity计算
+      // ===== 世界模型扩展字段 =====
+      age: 16 + Math.floor(Math.random() * 60) + npcLevel * 8, // 年龄随修为增长
+      lifespan: 100 + npcLevel * 50, // 寿元随境界增长
+      will: 30 + Math.floor(Math.random() * 50), // 独立意志 0-100，越高越难被操控
+      // memory / worldview / goals 由 NPCMemory.initMemory 填充
     };
+
+    // ===== 初始化NPC记忆系统（独立记忆、世界观、目标）=====
+    if (typeof NPCMemory !== 'undefined') {
+      NPCMemory.initMemory(npc);
+      // 为NPC生成个人目标
+      var goalTypes = ['breakthrough', 'cultivate', 'wealth', 'socialize', 'revenge', 'protect_family'];
+      var goalType = goalTypes[Math.floor(Math.random() * goalTypes.length)];
+      npc.goals = {
+        primary: {
+          type: goalType,
+          description: ({
+            breakthrough: '寻求境界突破',
+            cultivate: '潜心修炼',
+            wealth: '积攒资源财富',
+            socialize: '结交同道修士',
+            revenge: '了结某桩恩怨',
+            protect_family: '守护家族亲人',
+          })[goalType] || '潜心修炼',
+          progress: 0,
+        },
+        secondary: [],
+      };
+    }
 
     // 初始化NPC社交网络（道侣/亲友/宿敌/宗门）
     if (typeof this.setupNPCSocialNetwork === 'function') {

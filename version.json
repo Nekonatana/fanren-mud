@@ -1,7 +1,7 @@
-{
-  "version": "v14.20260731.pwa7",
-  "build": 20,
-  "updateTime": "2026-08-01",
-  "changelog": "核心系统重构：新增世界真相/公开叙事/个人认知三层分离、NPC独立记忆与关系网络、修炼锚定值（9维度境界≠战力）、修行债务系统（8种债务类型）、13种修炼道路、社会动作系统（交谈/送礼/偷窃/暗杀等12种）、墨大夫多路径样板章节（公开揭发/反杀/隐秘夺取/逃离/谈判5种结局+双重真相+长期回响）",
+﻿{
+  "version": "v14.20260803.pwa9",
+  "build": 23,
+  "updateTime": "2026-08-03",
+  "changelog": "iOS更新机制全面修复：1) FORCE_UPDATE流程重构-旧SW不直接触发重载而是等待新SW激活后发送UPDATE_READY 2) 新SW activate事件发送UPDATE_READY确保客户端在新SW接管后才重载 3) 添加缓存控制meta标签防止浏览器缓存 4) 修复showToast未定义问题改为UI.toast 5) 更新版本号强制刷新所有资源",
   "minClientVersion": "v14.0"
 }

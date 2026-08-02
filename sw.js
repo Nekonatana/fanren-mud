@@ -1,19 +1,18 @@
 /* ============================================================
- * 凡人修仙传MUD - Service Worker v3
+ * 凡人修仙传MUD - Service Worker v4
  * 离线缓存 + 自动更新 + 版本管理
  * ============================================================ */
 
-const CACHE_VERSION = 'fanren-mud-v14-20260731-pwa7';
+const CACHE_VERSION = 'fanren-mud-v14-20260803-pwa9';
 const CACHE_NAME = `${CACHE_VERSION}-${self.location.hostname}`;
 const OFFLINE_URL = './index.html';
-const APP_VERSION = 'v14.20260731.pwa7';
+const APP_VERSION = 'v14.20260803.pwa9';
 
-// 核心资源（安装时缓存）
+// 核心资源（安装时缓存）- version.json 不缓存，确保版本检测始终获取最新
 const CORE_ASSETS = [
   './',
   './index.html',
   './manifest.json',
-  './version.json',
   './css/style.css',
   './js/data.js',
   './js/worlddata.js',
@@ -72,10 +71,10 @@ self.addEventListener('activate', (event) => {
       })
       .then(() => self.clients.claim())
       .then(() => {
-        // 通知所有客户端：SW已激活，可能是新版本
+        // 新SW已激活并控制所有客户端，发送UPDATE_READY通知客户端重载
         self.clients.matchAll({ includeUncontrolled: true }).then((clients) => {
           clients.forEach((client) => {
-            client.postMessage({ type: 'SW_ACTIVATED', version: APP_VERSION });
+            client.postMessage({ type: 'UPDATE_READY', version: APP_VERSION });
           });
         });
       })
@@ -83,34 +82,60 @@ self.addEventListener('activate', (event) => {
 });
 
 // ============================================================
-// 请求拦截：缓存优先 + 网络更新（stale-while-revalidate）
+// 请求拦截：策略化缓存
 // ============================================================
 self.addEventListener('fetch', (event) => {
   const req = event.request;
 
-  // 只处理同源 GET 请求
   if (req.method !== 'GET' || !req.url.startsWith(self.location.origin)) {
     return;
   }
 
-  // 导航请求 → 缓存优先，后台检查更新
-  if (req.mode === 'navigate') {
+  // SW脚本本身 → 网络优先（确保浏览器能检测到SW更新）
+  if (req.url.indexOf('sw.js') !== -1) {
     event.respondWith(
-      caches.match('./index.html').then((cached) => {
-        const fetchPromise = fetch(req)
-          .then((resp) => {
-            const respClone = resp.clone();
-            caches.open(CACHE_NAME).then((c) => c.put('./index.html', respClone));
-            return resp;
-          })
-          .catch(() => cached);
-        return cached || fetchPromise;
-      })
+      fetch(req, { cache: 'no-cache' })
+        .then((resp) => {
+          return resp;
+        })
+        .catch(() => caches.match(req))
     );
     return;
   }
 
-  // 静态资源 → stale-while-revalidate 策略
+  // 版本检测文件 → 网络优先（始终获取最新）
+  if (req.url.indexOf('version.json') !== -1) {
+    event.respondWith(
+      fetch(req, { cache: 'no-cache' })
+        .then((resp) => {
+          const respClone = resp.clone();
+          caches.open(CACHE_NAME).then((c) => c.put(req, respClone));
+          return resp;
+        })
+        .catch(() => caches.match(req))
+    );
+    return;
+  }
+
+  // 导航请求 → 网络优先（始终拉取最新HTML）
+  if (req.mode === 'navigate') {
+    event.respondWith(
+      fetch(req)
+        .then((resp) => {
+          if (resp && resp.status === 200) {
+            const respClone = resp.clone();
+            caches.open(CACHE_NAME).then((c) => c.put('./index.html', respClone));
+          }
+          return resp;
+        })
+        .catch(() => caches.match('./index.html').then((cached) => {
+          return cached || caches.match('./');
+        }))
+    );
+    return;
+  }
+
+  // 静态资源 → stale-while-revalidate
   event.respondWith(
     caches.match(req).then((cached) => {
       const fetchPromise = fetch(req)
@@ -142,7 +167,7 @@ self.addEventListener('message', (event) => {
         client.postMessage({ type: 'UPDATE_CHECKING' });
       });
     });
-    // 优先检查 version.json（轻量、快速、可靠）
+
     fetch('./version.json', { cache: 'no-cache' })
       .then((resp) => resp.json())
       .then((data) => {
@@ -161,7 +186,6 @@ self.addEventListener('message', (event) => {
         });
       })
       .catch(() => {
-        // 回退：检查 index.html 中的版本标记
         fetch('./index.html', { cache: 'no-cache' })
           .then((resp) => resp.text())
           .then((html) => {
@@ -188,14 +212,25 @@ self.addEventListener('message', (event) => {
       });
   }
 
-  // 强制更新：清除所有缓存并重新加载
+  // 强制更新：清除所有缓存，通知客户端重载
+  // 关键修复：旧SW不直接发送FORCE_RELOAD，而是等待新SW激活后发送UPDATE_READY
   if (event.data === 'FORCE_UPDATE') {
+    // Step 1: 清除所有旧缓存
     caches.keys().then((keys) => {
       return Promise.all(keys.map((key) => caches.delete(key)));
     }).then(() => {
-      self.clients.matchAll().then((clients) => {
-        clients.forEach((client) => client.postMessage({ type: 'FORCE_RELOAD' }));
-      });
+      // Step 2: 检查是否有新SW正在等待激活
+      const reg = self.registration;
+      if (reg && reg.waiting) {
+        // 有新SW在等待，通知它立即激活
+        self.skipWaiting();
+        // 新SW的activate事件会发送UPDATE_READY给客户端
+      } else {
+        // 没有新SW，直接通知客户端重载
+        self.clients.matchAll().then((clients) => {
+          clients.forEach((client) => client.postMessage({ type: 'FORCE_RELOAD' }));
+        });
+      }
     });
   }
 });

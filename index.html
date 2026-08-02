@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-app-version="v14.20260731.pwa7">
+<html lang="zh-CN" data-app-version="v14.20260803.pwa9">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -12,6 +12,9 @@
 <meta name="theme-color" content="#0a0e14">
 <meta name="color-scheme" content="dark">
 <meta name="format-detection" content="telephone=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="description" content="基于《凡人修仙传》小说的MUD文字修仙游戏，离线可玩，随时修仙">
 <meta name="keywords" content="凡人修仙传,MUD,修仙,文字游戏,单机,离线,PWA">
 <meta property="og:title" content="凡人修仙传 · MUD修仙录">
@@ -29,7 +32,7 @@
 <link rel="apple-touch-icon" sizes="192x192" href="img/icon-192.png">
 <link rel="mask-icon" href="img/icon.svg" color="#d4a857">
 <title>凡人修仙传 · MUD修仙录</title>
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/style.css?v=pwa9">
 </head>
 <body>
 <div id="game-container">
@@ -227,30 +230,30 @@
 <div id="toast-container"></div>
 </div>
 
-<script src="js/data.js?v=pwa7"></script>
-<script src="js/worlddata.js?v=pwa7"></script>
-<script src="js/story.js?v=pwa7"></script>
-<script src="js/worldmodel.js?v=pwa7"></script>
-<script src="js/social.js?v=pwa7"></script>
-<script src="js/engine.js?v=pwa7"></script>
-<script src="js/worldengine.js?v=pwa7"></script>
-<script src="js/worldexpand_data.js?v=pwa7"></script>
-<script src="js/worldexpand.js?v=pwa7"></script>
-<script src="js/worldexpand2_data.js?v=pwa7"></script>
-<script src="js/worldexpand2.js?v=pwa7"></script>
-<script src="js/worldexpand3.js?v=pwa7"></script>
-<script src="js/worldexpand4_data.js?v=pwa7"></script>
-<script src="js/worldexpand4.js?v=pwa7"></script>
-<script src="js/worldexpand5_data.js?v=pwa7"></script>
-<script src="js/worldexpand5.js?v=pwa7"></script>
-<script src="js/worldexpand6_data.js?v=pwa7"></script>
-<script src="js/worldexpand6.js?v=pwa7"></script>
-<script src="js/worldexpand7_data.js?v=pwa7"></script>
-<script src="js/worldexpand7.js?v=pwa7"></script>
-<script src="js/worldexpand8_data.js?v=pwa7"></script>
-<script src="js/worldexpand8.js?v=pwa7"></script>
-<script src="js/native-bridge.js?v=pwa7"></script>
-<script src="js/main.js?v=pwa7"></script>
+<script src="js/data.js?v=pwa9"></script>
+<script src="js/worlddata.js?v=pwa9"></script>
+<script src="js/story.js?v=pwa9"></script>
+<script src="js/worldmodel.js?v=pwa9"></script>
+<script src="js/social.js?v=pwa9"></script>
+<script src="js/engine.js?v=pwa9"></script>
+<script src="js/worldengine.js?v=pwa9"></script>
+<script src="js/worldexpand_data.js?v=pwa9"></script>
+<script src="js/worldexpand.js?v=pwa9"></script>
+<script src="js/worldexpand2_data.js?v=pwa9"></script>
+<script src="js/worldexpand2.js?v=pwa9"></script>
+<script src="js/worldexpand3.js?v=pwa9"></script>
+<script src="js/worldexpand4_data.js?v=pwa9"></script>
+<script src="js/worldexpand4.js?v=pwa9"></script>
+<script src="js/worldexpand5_data.js?v=pwa9"></script>
+<script src="js/worldexpand5.js?v=pwa9"></script>
+<script src="js/worldexpand6_data.js?v=pwa9"></script>
+<script src="js/worldexpand6.js?v=pwa9"></script>
+<script src="js/worldexpand7_data.js?v=pwa9"></script>
+<script src="js/worldexpand7.js?v=pwa9"></script>
+<script src="js/worldexpand8_data.js?v=pwa9"></script>
+<script src="js/worldexpand8.js?v=pwa9"></script>
+<script src="js/native-bridge.js?v=pwa9"></script>
+<script src="js/main.js?v=pwa9"></script>
 <script>
 /* ===== PWA 启动参数处理 (manifest shortcuts) ===== */
 (function handleLaunchParams() {
@@ -286,7 +289,7 @@ var PWA_INSTALL_EVENT = null;
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {
-    navigator.serviceWorker.register('sw.js?v=pwa7')
+    navigator.serviceWorker.register('sw.js')
       .then(function(reg) {
         SW_REG = reg;
         // 检查更新
@@ -294,8 +297,7 @@ if ('serviceWorker' in navigator) {
           var nw = reg.installing;
           nw.addEventListener('statechange', function() {
             if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-              // 新版本已下载，提示用户刷新
-              showUpdatePrompt('发现新版本，已准备就绪！', '点击立即更新');
+              showUpdatePrompt('发现新版本，已准备就绪！', '点击立即更新', '', '');
             }
           });
         });
@@ -308,66 +310,94 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.addEventListener('message', function(event) {
       var data = event.data;
       if (!data) return;
+      console.log('[SW_MSG] 收到消息:', data.type);
 
-      if (data.type === 'SW_ACTIVATED') {
-        // SW已激活
+      if (data.type === 'UPDATE_READY') {
+        // 新SW已激活并接管，此时重新加载可获取最新版本
+        if (typeof UI !== 'undefined' && UI && typeof UI.toast === 'function') {
+          UI.toast('新版本已就绪，正在重新加载...', 'success');
+        }
+        setTimeout(function() {
+          console.log('[SW_MSG] UPDATE_READY -> 重载页面');
+          window.location.replace(window.location.href);
+        }, 300);
+      }
+
+      if (data.type === 'FORCE_RELOAD') {
+        // 回退：旧SW直接要求重载（无新SW等待激活时使用）
+        console.log('[SW_MSG] FORCE_RELOAD -> 立即重载页面');
+        if (typeof UI !== 'undefined' && UI && typeof UI.toast === 'function') {
+          UI.toast('正在重新加载...', 'info');
+        }
+        setTimeout(function() {
+          window.location.replace(window.location.href);
+        }, 100);
       }
 
       if (data.type === 'UPDATE_CHECKING') {
-        if (typeof showToast === 'function') {
-          showToast('正在检查更新...', 'info');
+        if (typeof UI !== 'undefined' && UI && typeof UI.toast === 'function') {
+          try { UI.toast('正在检查更新...', 'info'); } catch(e) {}
         }
       }
 
       if (data.type === 'UPDATE_RESULT') {
         if (data.error) {
-          if (typeof showToast === 'function') {
-            showToast('检查更新失败，可能是离线状态', 'warn');
+          if (typeof UI !== 'undefined' && UI && typeof UI.toast === 'function') {
+            try { UI.toast('检查更新失败，可能是离线状态', 'warn'); } catch(e) {}
           }
         } else if (data.hasUpdate) {
-          showUpdatePrompt('发现新版本 ' + data.latestVersion, '点击立即更新');
+          showUpdatePrompt('发现新版本 ' + data.latestVersion, '点击立即更新', data.changelog, data.currentVersion);
         } else {
-          if (typeof showToast === 'function') {
-            showToast('当前已是最新版本', 'success');
+          if (typeof UI !== 'undefined' && UI && typeof UI.toast === 'function') {
+            try { UI.toast('当前已是最新版本', 'success'); } catch(e) {}
           }
         }
       }
 
-      if (data.type === 'FORCE_RELOAD') {
-        // 强制重载
-        window.location.reload();
-      }
     });
   });
 }
 
 /* ===== 检查更新 ===== */
 function checkAppUpdate() {
+  var safeToast = function(msg, type) {
+    try { if (typeof UI !== 'undefined' && UI && UI.toast) UI.toast(msg, type); } catch(e) {}
+  };
   if (!SW_REG) {
-    if (typeof showToast === 'function') {
-      showToast('离线模式，无法检查更新', 'warn');
-    }
+    safeToast('离线模式，无法检查更新', 'warn');
     return;
   }
+  // 1. 触发SW更新检查（浏览器会获取最新sw.js）
   SW_REG.update().then(function() {
-    // 同时发送消息给SW做版本比较
-    navigator.serviceWorker.controller && navigator.serviceWorker.controller.postMessage('CHECK_UPDATE');
-    // 如果没有controller（首次安装），直接提示
+    // 2. 同时发送消息给SW做版本比较（通过version.json对比版本号）
+    if (navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage('CHECK_UPDATE');
+    }
+    // 3. 如果没有controller（首次安装），直接提示
     if (!navigator.serviceWorker.controller) {
-      if (typeof showToast === 'function') {
-        showToast('当前已是最新版本', 'success');
-      }
+      safeToast('当前已是最新版本', 'success');
     }
   }).catch(function() {
-    if (typeof showToast === 'function') {
-      showToast('检查更新失败', 'danger');
-    }
+    // 回退：直接通过version.json检查
+    fetch('./version.json', { cache: 'no-cache' })
+      .then(function(resp) { return resp.json(); })
+      .then(function(data) {
+        var currentVer = document.documentElement.getAttribute('data-app-version') || '';
+        var latestVer = data.version || '';
+        if (latestVer && latestVer !== currentVer) {
+          showUpdatePrompt('发现新版本 ' + latestVer, '点击立即更新', data.changelog, currentVer);
+        } else {
+          safeToast('当前已是最新版本', 'success');
+        }
+      })
+      .catch(function() {
+        safeToast('检查更新失败', 'danger');
+      });
   });
 }
 
 /* ===== 显示更新提示 ===== */
-function showUpdatePrompt(title, btnText) {
-  // 创建更新提示弹窗
+function showUpdatePrompt(title, btnText, changelog, currentVersion) {
   var existing = document.getElementById('update-prompt');
   if (existing) existing.remove();
 
@@ -386,6 +416,20 @@ function showUpdatePrompt(title, btnText) {
   titleEl.style.cssText = 'color:var(--gold-bright,#f0c75e);font-size:18px;font-weight:bold;margin-bottom:8px;';
   titleEl.textContent = title;
 
+  if (currentVersion) {
+    var verEl = document.createElement('div');
+    verEl.style.cssText = 'color:var(--text-dim,#7a7568);font-size:12px;margin-bottom:8px;';
+    verEl.textContent = '当前版本：' + currentVersion;
+    box.appendChild(verEl);
+  }
+
+  if (changelog) {
+    var clEl = document.createElement('div');
+    clEl.style.cssText = 'color:var(--text-dim,#7a7568);font-size:12px;margin-bottom:12px;text-align:left;max-height:80px;overflow-y:auto;padding:8px;background:rgba(0,0,0,0.2);border-radius:6px;';
+    clEl.textContent = '更新内容：' + changelog;
+    box.appendChild(clEl);
+  }
+
   var desc = document.createElement('div');
   desc.style.cssText = 'color:var(--text-dim,#7a7568);font-size:13px;margin-bottom:16px;';
   desc.textContent = '更新后将重新加载游戏，请确保已保存进度。';
@@ -397,12 +441,17 @@ function showUpdatePrompt(title, btnText) {
   btnUpdate.style.cssText = 'background:var(--gold,#d4a857);color:#0a0e14;border:none;padding:10px 24px;border-radius:6px;font-size:14px;font-weight:bold;cursor:pointer;';
   btnUpdate.textContent = btnText;
   btnUpdate.onclick = function() {
-    // 通知SW强制更新
+    btnUpdate.textContent = '正在更新...';
+    btnUpdate.disabled = true;
+    // 通知旧SW强制清除所有缓存并激活新SW
+    // 旧SW的FORCE_UPDATE处理会：清除缓存 → 激活新SW → 新SW发送UPDATE_READY → 客户端重载
     if (navigator.serviceWorker.controller) {
       navigator.serviceWorker.controller.postMessage('FORCE_UPDATE');
     }
-    // 同时直接刷新
-    setTimeout(function() { window.location.reload(); }, 500);
+    // 如无SW控制（首次安装后直接重载）
+    if (!navigator.serviceWorker.controller) {
+      window.location.reload();
+    }
   };
 
   var btnLater = document.createElement('button');
@@ -419,12 +468,11 @@ function showUpdatePrompt(title, btnText) {
   overlay.appendChild(box);
   document.body.appendChild(overlay);
 
-  // 8秒后自动消失（如果用户不操作）
   setTimeout(function() {
     if (document.getElementById('update-prompt')) {
       overlay.remove();
     }
-  }, 8000);
+  }, 15000);
 }
 
 /* ===== PWA 安装提示 ===== */
@@ -456,7 +504,7 @@ function showPWAInstallPrompt() {
     PWA_INSTALL_EVENT.prompt();
     PWA_INSTALL_EVENT.userChoice.then(function(choice) {
       if (choice.outcome === 'accepted') {
-        if (typeof showToast === 'function') showToast('安装成功！可在主屏幕打开', 'success');
+        if (typeof UI.toast === 'function') UI.toast('安装成功！可在主屏幕打开', 'success');
       }
       PWA_INSTALL_EVENT = null;
       btn.remove();

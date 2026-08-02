@@ -189,7 +189,7 @@ const ARTIFACT_RECIPES = {
 };
 
 // ===== 宗门职位定义（用于建筑兑换要求） =====
-const SECT_POSITIONS = {
+const SECT_POSITIONS_RANK = {
   outer_disciple: {name:"外门弟子", rank:1},
   inner_disciple: {name:"内门弟子", rank:2},
   inner_deacon: {name:"内门执事", rank:3},
