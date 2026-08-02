@@ -3,10 +3,10 @@
  * 离线缓存 + 自动更新 + 版本管理
  * ============================================================ */
 
-const CACHE_VERSION = 'fanren-mud-v14-pwa';
+const CACHE_VERSION = 'fanren-mud-v14-20260731-pwa7';
 const CACHE_NAME = `${CACHE_VERSION}-${self.location.hostname}`;
 const OFFLINE_URL = './index.html';
-const APP_VERSION = 'v14.20260731-pwa2';
+const APP_VERSION = 'v14.20260731.pwa7';
 
 // 核心资源（安装时缓存）
 const CORE_ASSETS = [
@@ -18,6 +18,8 @@ const CORE_ASSETS = [
   './js/data.js',
   './js/worlddata.js',
   './js/story.js',
+  './js/worldmodel.js',
+  './js/social.js',
   './js/engine.js',
   './js/worldengine.js',
   './js/worldexpand_data.js',
