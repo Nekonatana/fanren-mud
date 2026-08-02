@@ -333,7 +333,7 @@ Object.assign(WorldSystem, {
     s.locQuests[locKey].forEach(qIdx => {
       const isActive = s.activeLocQuests.some(q => q.locKey === locKey && q.questIdx === qIdx);
       const cooldown = s.locQuestCooldown[locKey] && s.locQuestCooldown[locKey][qIdx];
-      const currentDay = s.day || 0;
+      const currentDay = s.gameDay || 1;
       if (!isActive && (!cooldown || currentDay >= cooldown)) {
         result.push({idx: qIdx, quest: LOCATION_QUEST_POOL[qIdx]});
       }
@@ -377,7 +377,7 @@ Object.assign(WorldSystem, {
         html += '<div class="modal-item-row">';
         html += '<div style="color:var(--jade);">' + quest.title + '</div>';
         if (quest.type === "submit_material" && quest.requiredItem) {
-          const has = (s.items && s.items[quest.requiredItem]) || 0;
+          const has = (s.inventory.find(i => i.id === quest.requiredItem) || {}).count || 0;
           html += '<div class="modal-item-stats">\u6750\u6599\uFF1A' + (ITEMS[quest.requiredItem]?ITEMS[quest.requiredItem].name:quest.requiredItem) + ' (' + has + '/' + quest.requiredCount + ')</div>';
           if (has >= quest.requiredCount) {
             html += '<button class="btn-combat" style="margin-top:4px;font-size:0.7em;padding:3px 8px;" onclick="UI.closeModal();Game.gotoNode(\'_submit_material_' + locKey + '|' + aq.questIdx + '\')">\u{1F4E6} \u63D0\u4EA4\u6750\u6599</button>';
@@ -433,15 +433,18 @@ Object.assign(WorldSystem, {
     const quest = LOCATION_QUEST_POOL[questIdx];
     if (!quest || quest.type !== "submit_material") return;
 
-    const has = (s.items && s.items[quest.requiredItem]) || 0;
+    const has = (s.inventory.find(i => i.id === quest.requiredItem) || {}).count || 0;
     if (has < quest.requiredCount) {
       UI.toast("\u6750\u6599\u4E0D\u8DB3\uFF01\u9700\u8981" + quest.requiredCount + "\u4E2A" + (ITEMS[quest.requiredItem]?ITEMS[quest.requiredItem].name:quest.requiredItem), "danger");
       return;
     }
 
     // 扣除材料
-    s.items[quest.requiredItem] -= quest.requiredCount;
-    if (s.items[quest.requiredItem] <= 0) delete s.items[quest.requiredItem];
+    const inv = s.inventory.find(i => i.id === quest.requiredItem);
+    if (inv) {
+      inv.count -= quest.requiredCount;
+      if (inv.count <= 0) s.inventory = s.inventory.filter(i => i.id !== quest.requiredItem);
+    }
 
     // 完成任务
     this.completeLocationQuest(locKey, questIdx);
@@ -455,11 +458,10 @@ Object.assign(WorldSystem, {
     if (!quest) return;
 
     // 发放奖励
-    s.stones = (s.stones || 0) + quest.rewardStones;
+    s.spiritStones = (s.spiritStones || 0) + quest.rewardStones;
     s.exp = (s.exp || 0) + quest.rewardExp;
     if (quest.rewardItem) {
-      s.items = s.items || {};
-      s.items[quest.rewardItem] = (s.items[quest.rewardItem] || 0) + 1;
+      Game.addItem(quest.rewardItem, 1);
     }
     s.completedLocQuests = (s.completedLocQuests || 0) + 1;
 
@@ -468,7 +470,7 @@ Object.assign(WorldSystem, {
 
     // 设置冷却（5天后可再次接取）
     if (!s.locQuestCooldown[locKey]) s.locQuestCooldown[locKey] = {};
-    s.locQuestCooldown[locKey][questIdx] = (s.day || 0) + 5;
+    s.locQuestCooldown[locKey][questIdx] = (s.gameDay || 1) + 5;
 
     // 生成新任务替换
     const cultStage = CULT_LEVELS[s.cultLevel].stage;
@@ -532,17 +534,25 @@ Object.assign(WorldSystem, {
       return;
     }
 
+    // 提前定义 enemyLv，修复获宝分支因未定义导致 NaN 的 bug
+    const enemyLv = dungeon.enemyLv;
+    // 确保副本所在区域有NPC（供NPC相遇事件使用）
+    this.ensureAreaNPCs(s, locKey);
+
     let texts = [
       {type:"chapter_title", content:dungeon.name},
       {type:"narration", content:dungeon.desc},
     ];
     UI.renderNarrative(texts);
 
-    // 50%遇敌, 30%获宝, 20%空
+    // 原：50%遇敌, 30%获宝, 20%空（有enemyLv未定义与s.stones属性名错误两个bug）
+    // 修复后：40%战斗+7%强敌+15%获宝+8%普通NPC+8%剧情NPC+5%灵山+12%随机事件+仅5%空
+    // 分布与野外exploreArea同等丰富度
     const roll = Math.random();
-    if (roll < 0.5) {
+
+    // —— 40% 普通战斗 ——
+    if (roll < 0.40) {
       // 战斗
-      const enemyLv = dungeon.enemyLv;
       const enemy = {
         name: this.generateDungeonEnemyName(locKey),
         hp: 2000 + enemyLv * 2000,
@@ -555,23 +565,158 @@ Object.assign(WorldSystem, {
       };
       s._dungeonLocKey = locKey;
       Game.startCombat(enemy, "_loc_dungeon_win_" + locKey, "_loc_dungeon_lose");
-    } else if (roll < 0.8) {
+    }
+
+    // —— 7% 强敌战斗（Boss，双倍属性与奖励） ——
+    else if (roll < 0.47) {
+      const enemy = {
+        name: "\u3010\u7CBE\u82F1\u3011" + this.generateDungeonEnemyName(locKey),
+        hp: Math.floor((2000 + enemyLv * 2000) * 2),
+        maxHp: Math.floor((2000 + enemyLv * 2000) * 2),
+        atk: Math.floor((100 + enemyLv * 100) * 1.5),
+        def: Math.floor((50 + enemyLv * 50) * 1.5),
+        exp: Math.floor((200 + enemyLv * 300) * 2),
+        stones: Math.floor((50 + enemyLv * 100) * 2),
+        drops: dungeon.rewards.concat(dungeon.rewards),
+      };
+      s._dungeonLocKey = locKey;
+      s._dungeonBossBonus = true;
+      UI.renderNarrative([
+        {type:"narration", content:"\u4E00\u80A1\u5F3A\u5927\u7684\u6C14\u606F\u6251\u9762\u800C\u6765\uFF0C\u4F60\u611F\u89C9\u5230\u4E86\u5F02\u5E38\u5371\u9669\u7684\u5B58\u5728\uFF01"},
+      ]);
+      Game.startCombat(enemy, "_loc_dungeon_win_" + locKey, "_loc_dungeon_lose");
+    }
+
+    // —— 15% 获宝 ——
+    else if (roll < 0.62) {
       // 获宝
       const item = dungeon.rewards[Math.floor(Math.random() * dungeon.rewards.length)];
-      s.items = s.items || {};
-      s.items[item] = (s.items[item] || 0) + 1;
+      Game.addItem(item, 1);
       const itemName = ITEMS[item] ? ITEMS[item].name : item;
+      // 修复：enemyLv 已在顶部定义，s.stones -> s.spiritStones （灵石属性名）
       const stones = 50 + Math.floor(Math.random() * 100) * (enemyLv + 1);
-      s.stones = (s.stones || 0) + stones;
+      s.spiritStones = (s.spiritStones || 0) + stones;
       UI.renderNarrative([
-        {type:"system_msg", content:"\u5728\u526F\u672C\u4E2D\u53D1\u73B0\u4E86\u5B9D\u7269\uFF01"},
+        {type:"system_msg", content:"\u5728\u526F\u672C\u6DF1\u5904\u53D1\u73B0\u4E86\u5B9D\u7269\uFF01"},
         {type:"system_msg", content:"\u83B7\u5F97\uFF1A" + itemName + " x1\u3001" + stones + "\u7075\u77F3"},
       ]);
       UI.renderChoices([{text:"\u79BB\u5F00\u526F\u672C", next:"_place_back_" + locKey, effect:{}}]);
       UI.updateAll();
-    } else {
-      // 空
-      UI.renderNarrative([{type:"system_msg", content:"\u4E00\u65E0\u6240\u83B7\u3002"}]);
+    }
+
+    // —— 8% 遇到NPC修士（普通NPC：交谈/偷窃/袭击/绕道） ——
+    else if (roll < 0.70) {
+      const areaNPCs = this.getAreaNPCs(s, locKey);
+      if (areaNPCs.length > 0) {
+        const npc = areaNPCs[Math.floor(Math.random() * Math.min(areaNPCs.length, 20))];
+        const genderStr = npc.isFemale ? "\u5973\u4FEE" : "\u7537\u4FEE";
+        const cultStr = npc.cultLevel !== undefined ? npc.cultName : "\u51E1\u4EBA";
+        const childStr = npc.isChild ? "\uFF08\u5B69\u7AE5\uFF09" : "";
+        UI.renderNarrative([
+          {type:"narration", content:"\u4F60\u5728\u526F\u672C\u4E2D\u524D\u884C\u65F6\uFF0C\u7ADF\u9047\u5230\u4E86\u4E00\u4F4D" + genderStr + childStr + "\u3002"},
+          {type:"narration", content:"\u5BF9\u65B9" + (npc.action || "\u6B63\u5728\u5F98\u8FC4") + "\uFF0C" + (npc.cultLevel !== undefined ? "\u4FEE\u4E3A\u4F3C\u4E4E\u5728" + cultStr + "\u5DE6\u53F3\uFF0C" : "\u770B\u8D77\u6765\u662F\u666E\u901A\u51E1\u4EBA\uFF0C") + "\u6027\u683C" + npc.personality.type + "\u3002"},
+          {type:"dialogue", content:"\u300C" + npc.title + npc.name + "\u3002\u300D\u5BF9\u65B9\u81EA\u6211\u4ECB\u7ECD\u9053\u3002"},
+        ]);
+        UI.renderChoices([
+          {text:"\u4E0A\u524D\u4EA4\u8C08", next:"_npc_talk_" + npc.id, effect:{}},
+          {text:"\u5C1D\u8BD5\u5077\u7A83", next:"_npc_steal_" + npc.id, effect:{}},
+          {text:"\u88AD\u51FB" + npc.name, next:"_npc_attack_" + npc.id, effect:{}},
+          {text:"\u7ED5\u9053\u800C\u884C", next:"_place_back_" + locKey, effect:{}},
+        ]);
+        UI.updateAll();
+      } else {
+        // 没有NPC，回退为获宝事件
+        const item = dungeon.rewards[Math.floor(Math.random() * dungeon.rewards.length)];
+        Game.addItem(item, 1);
+        const itemName = ITEMS[item] ? ITEMS[item].name : item;
+        const stones = 50 + Math.floor(Math.random() * 100) * (enemyLv + 1);
+        s.spiritStones = (s.spiritStones || 0) + stones;
+        UI.renderNarrative([
+          {type:"system_msg", content:"\u526F\u672C\u7A7A\u65E0\u4E00\u4EBA\uFF0C\u4F60\u5728\u89D2\u843D\u53D1\u73B0\u4E86\u4E00\u4E9B\u7269\u54C1\u3002"},
+          {type:"system_msg", content:"\u83B7\u5F97\uFF1A" + itemName + " x1\u3001" + stones + "\u7075\u77F3"},
+        ]);
+        UI.renderChoices([{text:"\u79BB\u5F00\u526F\u672C", next:"_place_back_" + locKey, effect:{}}]);
+        UI.updateAll();
+      }
+    }
+
+    // —— 8% 遇到剧情NPC（NEW_STORY_NPCS） ——
+    else if (roll < 0.78 && typeof NEW_STORY_NPCS !== 'undefined' && typeof this.getNewStoryNPCLocation === 'function') {
+      const loc = WORLD_MAP[locKey] || {};
+      const availableNewNPCs = Object.keys(NEW_STORY_NPCS).filter(npcId => {
+        const locInfo = this.getNewStoryNPCLocation(npcId, s);
+        return locInfo && (locInfo.area === loc.name || locInfo.area === locKey);
+      });
+      if (availableNewNPCs.length > 0) {
+        const npcId = availableNewNPCs[Math.floor(Math.random() * availableNewNPCs.length)];
+        const snpc = NEW_STORY_NPCS[npcId];
+        const locInfo = this.getNewStoryNPCLocation(npcId, s);
+        UI.renderNarrative([
+          {type:"narration", content:"\u4F60\u5728" + (locInfo.subArea || dungeon.name) + "\u6DF1\u5904\u63A2\u7D22\u65F6\uFF0C\u9047\u5230\u4E86\u4E00\u4F4D" + (snpc.isFemale ? "\u5973\u4FEE" : "\u7537\u4FEE") + "\u2014\u2014" + snpc.name + "\u3002"},
+          {type:"narration", content: (snpc.desc || "") + "\uFF0C" + (locInfo.desc || "")},
+        ]);
+        UI.renderChoices([
+          {text:"\u4E0A\u524D\u4EA4\u8C08", next:"_interact_new_story_" + npcId, effect:{}},
+          {text:"\u7ED5\u9053\u800C\u884C", next:"_place_back_" + locKey, effect:{}},
+        ]);
+        UI.updateAll();
+      } else {
+        const item = dungeon.rewards[Math.floor(Math.random() * dungeon.rewards.length)];
+        Game.addItem(item, 1);
+        const itemName = ITEMS[item] ? ITEMS[item].name : item;
+        UI.renderNarrative([
+          {type:"system_msg", content:"\u4F60\u5728\u526F\u672C\u4E2D\u53D1\u73B0\u4E86\u88AB\u9057\u5F03\u7684\u5B9D\u7BB1\u3002"},
+          {type:"system_msg", content:"\u83B7\u5F97\uFF1A" + itemName + " x1"},
+        ]);
+        UI.renderChoices([{text:"\u79BB\u5F00\u526F\u672C", next:"_place_back_" + locKey, effect:{}}]);
+        UI.updateAll();
+      }
+    }
+
+    // —— 5% 发现灵山/秘境 ——
+    else if (roll < 0.83) {
+      if (typeof this.discoverWildSpiritMountain === 'function') {
+        this.discoverWildSpiritMountain();
+      } else if (typeof this.findCaveDwelling === 'function') {
+        this.findCaveDwelling(dungeon.name + "\u5916\u56F4");
+      } else {
+        const item = dungeon.rewards[Math.floor(Math.random() * dungeon.rewards.length)];
+        Game.addItem(item, 1);
+        const itemName = ITEMS[item] ? ITEMS[item].name : item;
+        UI.renderNarrative([
+          {type:"system_msg", content:"\u4F60\u5728\u526F\u672C\u6DF1\u5904\u53D1\u73B0\u7075\u6C14\u6CE2\u52A8\uFF0C\u83B7\u5F97\u4E86\u5B9D\u7269\u3002"},
+          {type:"system_msg", content:"\u83B7\u5F97\uFF1A" + itemName + " x1"},
+        ]);
+        UI.renderChoices([{text:"\u79BB\u5F00\u526F\u672C", next:"_place_back_" + locKey, effect:{}}]);
+        UI.updateAll();
+      }
+    }
+
+    // —— 12% 随机事件 ——
+    else if (roll < 0.95) {
+      if (typeof Game.rollRandomEvent === 'function' && typeof Game.processRandomEvent === 'function') {
+        const event = Game.rollRandomEvent();
+        Game.processRandomEvent(event, locKey);
+      } else if (typeof this.findCaveDwelling === 'function') {
+        this.findCaveDwelling(dungeon.name + "\u6DF1\u5904");
+      } else {
+        const stones = 30 + Math.floor(Math.random() * 80) * (enemyLv + 1);
+        s.spiritStones = (s.spiritStones || 0) + stones;
+        UI.renderNarrative([
+          {type:"system_msg", content:"\u526F\u672C\u4E2D\u5FFD\u751F\u5F02\u8C61\uFF0C\u4F60\u65E0\u610F\u95F4\u83B7\u5F97\u4E86\u4E00\u4E9B\u7075\u77F3\u3002"},
+          {type:"system_msg", content:"\u83B7\u5F97\uFF1A" + stones + "\u7075\u77F3"},
+        ]);
+        UI.renderChoices([{text:"\u79BB\u5F00\u526F\u672C", next:"_place_back_" + locKey, effect:{}}]);
+        UI.updateAll();
+      }
+    }
+
+    // —— 仅5% 一无所获（原先是20%！） ——
+    else {
+      UI.renderNarrative([
+        {type:"narration", content:"\u526F\u672C\u4E2D\u4E00\u7247\u5BC2\u9759\uFF0C\u4F3C\u4E4E\u5DF2\u88AB\u524D\u4EBA\u641C\u522E\u76E1\u5C3D\u3002"},
+        {type:"system_msg", content:"\u4E00\u65E0\u6240\u83B7\u3002"},
+      ]);
       UI.renderChoices([{text:"\u79BB\u5F00\u526F\u672C", next:"_place_back_" + locKey, effect:{}}]);
       UI.updateAll();
     }
@@ -580,12 +725,13 @@ Object.assign(WorldSystem, {
   // ===== 生成副本敌人名称 =====
   generateDungeonEnemyName(locKey) {
     const names = {
-      "\u4E03\u7384\u95E8": ["\u540E\u5C71\u5996\u72FC","\u5BC6\u6797\u866B\u7387","\u5C71\u5D16\u5DE8\u87EE"],
-      "\u9EC4\u67AB\u8C37": ["\u6728\u7CBE","\u7075\u6728\u5996\u517D","\u6811\u9B3C"],
-      "\u5929\u5357\u574A\u5E02\u57CE": ["\u53E4\u5893\u50F5\u5C38","\u5730\u5BAB\u5B88\u536B","\u5E7D\u9B42"],
-      "\u957F\u5B89\u57CE": ["\u5730\u5BAB\u7981\u519B","\u53E4\u5893\u67AA\u7075","\u5730\u5BAB\u523A\u5BA2"],
-      "\u5317\u72C4\u8349\u539F": ["\u51B0\u5C42\u5996\u517D","\u96EA\u72FC","\u5317\u72C4\u72C2\u6218\u58EB"],
-      "\u5357\u86EE\u4E1B\u6797": ["\u6BD2\u86FE","\u86EE\u8352\u5996\u517D","\u5DEB\u5E08\u5076\u5076"],
+      "七玄门集镇": ["后山妖狼","密林虫豸","山崖巨蟒"],
+      "黄枫谷": ["木精","灵木妖兽","树鬼"],
+      "天南坊市城": ["古塔僵尸","地宫守卫","幽魂"],
+      "长安城": ["地宫禁军","古墓枪灵","地宫刺客"],
+      "太南谷": ["百毒谷毒虫","幽冥鬼修","涧底水妖"],
+      "北狄草原": ["冰层妖兽","雪狼","北狄狂战士"],
+      "南蛮丛林": ["毒蛾","蛮荒妖兽","巫师偶偶"],
     };
     const list = names[locKey] || ["\u526F\u672C\u5996\u517D","\u5B88\u62A4\u8005","\u5F02\u517D"];
     return list[Math.floor(Math.random() * list.length)];
@@ -598,14 +744,39 @@ Object.assign(WorldSystem, {
     if (!dungeon) return;
     // 额外奖励
     const item = dungeon.rewards[Math.floor(Math.random() * dungeon.rewards.length)];
-    s.items = s.items || {};
-    s.items[item] = (s.items[item] || 0) + 1;
+    Game.addItem(item, 1);
     const itemName = ITEMS[item] ? ITEMS[item].name : item;
-    UI.toast("\u526F\u672C\u80DC\u5229\uFF01\u83B7\u5F97" + itemName, "success");
-    let texts = [
-      {type:"system_msg", content:"\u526F\u672C\u80DC\u5229\uFF01"},
-      {type:"system_msg", content:"\u83B7\u5F97\u989D\u5916\u5956\u52B1\uFF1A" + itemName + " x1"},
-    ];
+
+    let bossExtraItems = [];
+    // 如果是精英Boss战斗，额外再给2件奖励 + 灵石
+    if (s._dungeonBossBonus) {
+      for (let i = 0; i < 2; i++) {
+        const ex = dungeon.rewards[Math.floor(Math.random() * dungeon.rewards.length)];
+        Game.addItem(ex, 1);
+        bossExtraItems.push((ITEMS[ex] ? ITEMS[ex].name : ex) + " x1");
+      }
+      const enemyLv = dungeon.enemyLv;
+      const extraStones = (50 + enemyLv * 100) * 2;
+      s.spiritStones = (s.spiritStones || 0) + extraStones;
+      bossExtraItems.push(extraStones + "\u7075\u77F3");
+      delete s._dungeonBossBonus;
+    }
+
+    let texts = [];
+    if (bossExtraItems.length > 0) {
+      UI.toast("\u7CBE\u82F1Boss\u5012\u4E0B\uFF01\u83B7\u5F97\u4E30\u539A\u5956\u52B1\uFF1A" + itemName + " 等", "success");
+      texts = [
+        {type:"system_msg", content:"\u526F\u672C\u7CBE\u82F1Boss\u80DC\u5229\uFF01"},
+        {type:"system_msg", content:"\u83B7\u5F97\u989D\u5916\u5956\u52B1\uFF1A" + itemName + " x1"},
+        {type:"system_msg", content:"\u7CBE\u82F1Boss\u989D\u5916\uFF1A" + bossExtraItems.join("\u3001")},
+      ];
+    } else {
+      UI.toast("\u526F\u672C\u80DC\u5229\uFF01\u83B7\u5F97" + itemName, "success");
+      texts = [
+        {type:"system_msg", content:"\u526F\u672C\u80DC\u5229\uFF01"},
+        {type:"system_msg", content:"\u83B7\u5F97\u989D\u5916\u5956\u52B1\uFF1A" + itemName + " x1"},
+      ];
+    }
     UI.renderNarrative(texts);
     UI.renderChoices([{text:"\u7EE7\u7EED\u63A2\u7D22", next:"_loc_dungeon_enter_" + locKey, effect:{}}, {text:"\u79BB\u5F00\u526F\u672C", next:"_place_back_" + locKey, effect:{}}]);
     UI.updateAll();
@@ -812,8 +983,7 @@ Object.assign(WorldSystem, {
     const s = Game.state;
     const herbs = ["spirit_grass","spirit_grass","healing_herb","qi_herb"];
     const herb = herbs[Math.floor(Math.random() * herbs.length)];
-    s.items = s.items || {};
-    s.items[herb] = (s.items[herb] || 0) + 1;
+    Game.addItem(herb, 1);
     this.advanceDays(1);
     const herbName = ITEMS[herb] ? ITEMS[herb].name : herb;
     UI.toast("\u91C7\u96C6\u5230" + herbName + "\u00D71", "success");
@@ -825,7 +995,7 @@ Object.assign(WorldSystem, {
   // ===== 场所动作: 听传闻 =====
   placeRumor(locKey) {
     const rumors = [
-      "\u542C\u8BF4\u6700\u8FD1\u5929\u5357\u8352\u91CE\u51FA\u73B0\u4E86\u4E00\u5934\u53E4\u5996\u517D\uFF0C\u4E0D\u77E5\u9053\u6709\u6CA1\u6709\u4EBA\u80FD\u5236\u670D\u3002",
+      "\u542C\u8BF4\u6700\u8FD1\u5929\u5357\u574A\u5E02\u57CE\u57CE\u5916\u8352\u91CE\u51FA\u73B0\u4E86\u4E00\u5934\u53E4\u5996\u517D\uFF0C\u4E0D\u77E5\u9053\u6709\u6CA1\u6709\u4EBA\u80FD\u5236\u670D\u3002",
       "\u67D0\u4F4D\u6563\u4FEE\u5728\u574A\u5E02\u62FF\u5230\u4E86\u4E00\u4EF6\u4E0A\u53E4\u6CD5\u5668\uFF0C\u5F15\u8D77\u4E86\u4E0D\u5C0F\u7684\u8F70\u52A8\u3002",
       "\u6700\u8FD1\u4E71\u661F\u6D77\u90A3\u8FB9\u4F3C\u4E4E\u6709\u6D77\u517D\u4F5C\u4E71\uFF0C\u5546\u8239\u90FD\u4E0D\u6562\u51FA\u6D77\u4E86\u3002",
       "\u6709\u4EBA\u8BF4\u5728\u5760\u9B54\u8C37\u6DF1\u5904\u53D1\u73B0\u4E86\u4E00\u5EA7\u53E4\u4FEE\u58EB\u7684\u6D1E\u5E9C\uFF0C\u4F46\u4E5F\u6709\u4EBA\u8BF4\u90A3\u662F\u9B54\u5C3D\u3002",
@@ -855,7 +1025,7 @@ Object.assign(WorldSystem, {
     ];
     const bless = blessings[Math.floor(Math.random() * blessings.length)];
     if (bless.type === "exp") s.exp = (s.exp || 0) + bless.value;
-    else if (bless.type === "stones") s.stones = (s.stones || 0) + bless.value;
+    else if (bless.type === "stones") s.spiritStones = (s.spiritStones || 0) + bless.value;
     else if (bless.type === "hp") s.hp = s.maxHp;
     this.advanceDays(1);
     UI.toast(bless.msg, bless.type === "nothing" ? "info" : "success");
@@ -900,7 +1070,7 @@ Object.assign(WorldSystem, {
       const ranks = ["\u79C0\u624D","\u4E3E\u4EBA","\u8FDB\u58EB","\u63A2\u82B1"];
       const rank = ranks[Math.min(cultStage, ranks.length - 1)];
       s.dynastyRank = rank;
-      s.stones = (s.stones || 0) + 200;
+      s.spiritStones = (s.spiritStones || 0) + 200;
       s.exp = (s.exp || 0) + 500;
       UI.toast("\u79D1\u4E3E\u9AD8\u4E2D\uFF01\u83B7\u5F97\u5B98\u8EAB\uFF1A" + rank, "success");
       UI.renderNarrative([
@@ -930,7 +1100,7 @@ Object.assign(WorldSystem, {
     const ranks = ["\u5C0F\u5352","\u4EC0\u957F","\u767E\u6237","\u5343\u6237"];
     const rank = ranks[Math.min(cultStage, ranks.length - 1)];
     s.dynastyRank = rank;
-    s.stones = (s.stones || 0) + 100;
+    s.spiritStones = (s.spiritStones || 0) + 100;
     s.exp = (s.exp || 0) + 300;
     UI.toast("\u4ECE\u519B\u6210\u529F\uFF01\u83B7\u5F97\u519B\u88C5\uFF1A" + rank, "success");
     UI.renderNarrative([
@@ -954,7 +1124,7 @@ Object.assign(WorldSystem, {
       return;
     }
     const reward = 500 + cultStage * 200;
-    s.stones = (s.stones || 0) + reward;
+    s.spiritStones = (s.spiritStones || 0) + reward;
     s.exp = (s.exp || 0) + 200;
     UI.toast("\u7687\u5E1D\u8D50\u4E88" + reward + "\u7075\u77F3\uFF01", "success");
     UI.renderNarrative([
@@ -1007,13 +1177,28 @@ Object.assign(WorldSystem, {
     if (s.currentPlace) s.currentPlace = null;
     const loc = WORLD_MAP[locKey];
     if (!loc) { Game.gotoNode("_open_map"); return; }
-    // 检查是否有TOWNS入口
+
+    // 补一次location写入
+    s.location = loc.name;
+    s.locationKey = locKey;
+    s._expand5 = s._expand5 || {};
+    s._expand5.visitedLocs = s._expand5.visitedLocs || {};
+    s._expand5.visitedLocs[locKey] = true;
+
+    // 如果是城镇地点，直接进入城镇内部（显示商店/副本/NPC等完整选项）
     const townKey = Object.keys(TOWNS).find(t => TOWNS[t].region === locKey || t === locKey);
     if (townKey) {
+      s.visitedCities = s.visitedCities || new Set();
+      if (typeof s.visitedCities.add === 'function') s.visitedCities.add(locKey);
+      else s.visitedCities[locKey] = true;
       this.enterTown(townKey);
     } else {
-      // 非城镇，显示场所面板
-      this.showPlacesPanel(locKey);
+      // 非城镇：显示地点面板
+      if (typeof this.showLocationPanel === 'function') {
+        this.showLocationPanel(locKey);
+      } else {
+        this.showPlacesPanel(locKey);
+      }
     }
   },
 });
