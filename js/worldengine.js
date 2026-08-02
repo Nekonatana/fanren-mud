@@ -853,6 +853,28 @@ const WorldSystem = {
     if (typeof this.showSectRankingPanel === 'function') {
       choices.push({text:"🏯 宗门/家族排名", next:"_sect_ranking_panel", effect:{}});
     }
+
+    // 城镇间快速移动：基于WORLD_MAP的connections，显示连通的城镇
+    if (WORLD_MAP[regionKey] && WORLD_MAP[regionKey].connections) {
+      const connectedTowns = [];
+      WORLD_MAP[regionKey].connections.forEach(connKey => {
+        // 检查连接地点是否对应一个城镇
+        const connTownKey = Object.keys(TOWNS).find(t => TOWNS[t].region === connKey || t === connKey);
+        if (connTownKey && TOWNS[connTownKey]) {
+          const connTown = TOWNS[connTownKey];
+          const connReqStage = connTown.reqStage;
+          if (CULT_LEVELS[s.cultLevel].stage >= connReqStage) {
+            connectedTowns.push({townKey: connTownKey, name: connTown.name, region: connTown.region});
+          }
+        }
+      });
+      if (connectedTowns.length > 0) {
+        connectedTowns.forEach(ct => {
+          choices.push({text:"🚶 前往" + ct.name, next:"_town_travel_" + ct.townKey, effect:{}});
+        });
+      }
+    }
+
     choices.push({text:"离开城镇", next:"_town_leave", effect:{}});
     UI.renderChoices(choices);
     UI.updateAll();
@@ -1055,9 +1077,9 @@ const WorldSystem = {
         
         html += '<div class="modal-item-row" onclick="UI.closeModal();Game.gotoNode(\'_npc_talk_' + npc.id + '\')" style="cursor:pointer;">';
         html += '<div><div style="color:' + moodColor + ';">' + friendStr + childStr + npc.title + npc.name;
-        html += ' <span style="font-size:0.8em;color:var(--text-dim);">[' + genderStr + '·' + cultStr + '·好感' + npc.mood + ']</span>';
+        html += ' <span style="font-size:0.8em;color:var(--text-dim);">[' + genderStr + '·' + cultStr + '·好感' + (npc.mood >= 0 ? npc.mood : 50) + ']</span>';
         html += '</div>';
-        html += '<div class="modal-item-desc">性格' + npc.personality.type + '，' + (npc.action || "正在活动") + '</div>';
+        html += '<div class="modal-item-desc">性格' + (npc.personality && npc.personality.type ? npc.personality.type : '普通') + '，' + (npc.action || "正在活动") + '</div>';
         html += '</div></div>';
       });
     }
@@ -1438,8 +1460,8 @@ const WorldSystem = {
       return;
     }
 
-    // 8%概率遇到新增剧情NPC
-    if (roll >= 0.05 && roll < 0.13 && typeof NEW_STORY_NPCS !== 'undefined' && typeof this.getNewStoryNPCLocation === 'function') {
+    // 15%概率遇到新增剧情NPC（提升剧情NPC出现权重）
+    if (roll >= 0.05 && roll < 0.20 && typeof NEW_STORY_NPCS !== 'undefined' && typeof this.getNewStoryNPCLocation === 'function') {
       const cultStage = CULT_LEVELS[s.cultLevel].stage;
       const availableNewNPCs = Object.keys(NEW_STORY_NPCS).filter(npcId => {
         const locInfo = this.getNewStoryNPCLocation(npcId, s);
